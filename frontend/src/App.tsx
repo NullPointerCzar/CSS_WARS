@@ -2,6 +2,9 @@ import { Link, Route, Routes } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useIdentity, clearIdentity } from './lib/identity.js';
 import { IdentitySelection } from './pages/IdentitySelection.js';
+import { ChallengeList } from './pages/ChallengeList.js';
+import { ChallengeDetail } from './pages/ChallengeDetail.js';
+import { ChallengeManage } from './pages/admin/ChallengeManage.js';
 
 type Health = { status: string; service: string; uptime: number };
 
@@ -42,6 +45,22 @@ export default function App() {
           </span>
           Battle
         </Link>
+        <nav className="flex items-center gap-1">
+          <Link
+            to="/challenges"
+            className="px-4 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+          >
+            Challenges
+          </Link>
+          {identity.role === 'ADMIN' && (
+            <Link
+              to="/admin/challenges"
+              className="px-4 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+            >
+              Manage
+            </Link>
+          )}
+        </nav>
         <div className="flex items-center gap-6">
           <HealthBadge />
           <div className="flex items-center gap-3 text-sm">
@@ -71,6 +90,11 @@ export default function App() {
               </section>
             }
           />
+          <Route path="/challenges" element={<ChallengeList />} />
+          <Route path="/challenges/:id" element={<ChallengeDetail />} />
+          {identity.role === 'ADMIN' && (
+            <Route path="/admin/challenges" element={<ChallengeManage />} />
+          )}
           <Route
             path="*"
             element={<p className="text-slate-400">Not implemented yet.</p>}

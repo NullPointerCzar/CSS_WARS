@@ -1,7 +1,9 @@
 import cors from 'cors';
 import express, { type Express, type Request, type Response } from 'express';
+import path from 'path';
 import { identityRouter } from './routes/identity.js';
 import { adminRouter } from './routes/admin.js';
+import { challengesRouter, adminChallengesRouter } from './routes/challenges.js';
 
 export function createApp(): Express {
   const app = express();
@@ -25,8 +27,13 @@ export function createApp(): Express {
   );
   app.use(express.json({ limit: '1mb' }));
 
+  // Serve uploaded images statically
+  app.use('/uploads', express.static(path.resolve('uploads')));
+
   app.use('/api', identityRouter);
+  app.use('/api/challenges', challengesRouter);
   app.use('/api/admin', adminRouter);
+  app.use('/api/admin/challenges', adminChallengesRouter);
 
   app.get('/api/health', (_req: Request, res: Response) => {
     res.json({ status: 'ok', service: 'cssbattle-backend', uptime: process.uptime() });
