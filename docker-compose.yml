@@ -4,11 +4,11 @@ services:
     container_name: cssbattle-postgres
     restart: unless-stopped
     ports:
-      - '5434:5432'
+      - '5432:5432'
     environment:
-      POSTGRES_USER: cssbattle
-      POSTGRES_PASSWORD: cssbattle_dev
-      POSTGRES_DB: cssbattle
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1234
+      POSTGRES_DB: postgres
     volumes:
       - pgdata:/var/lib/postgresql/data
 
