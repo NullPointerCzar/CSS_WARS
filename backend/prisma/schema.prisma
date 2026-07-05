@@ -1,0 +1,108 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  PARTICIPANT
+  ADMIN
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum CompetitionStatus {
+  NOT_STARTED
+  RUNNING
+  PAUSED
+  ENDED
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+/// Pre-registered participants and admin users.
+/// Identity is name + optional 4-digit PIN (not hashed — identity-lite, not security).
+model User {
+  id         String   @id @default(cuid())
+  name       String
+  rollNumber String?
+  pinCode    String?  /// Optional 4-digit code, stored as plain string
+  role       Role     @default(PARTICIPANT)
+
+  submissions Submission[]
+
+  // Reverse relation for challenges created by admin users
+  createdChallenges Challenge[]
+
+  createdAt DateTime @default(now())
+
+  // Unique name per event to avoid leaderboard ambiguity
+  @@unique([name])
+}
+
+/// A CSS challenge with a target image that participants try to replicate.
+model Challenge {
+  id             String     @id @default(cuid())
+  title          String
+  description    String?
+  difficulty     Difficulty
+  targetImageUrl String
+  roundNumber    Int
+  published      Boolean    @default(false)
+
+  createdBy String
+  creator   User   @relation(fields: [createdBy], references: [id])
+
+  submissions Submission[]
+
+  createdAt DateTime @default(now())
+}
+
+/// A participant's submission of HTML/CSS code for a challenge.
+model Submission {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  challengeId String
+  challenge   Challenge @relation(fields: [challengeId], references: [id])
+
+  htmlCode    String   @db.Text
+  cssCode     String   @db.Text
+  codeLength  Int      /// Bytes, computed server-side at submission time
+
+  score         Decimal? @db.Decimal(5, 2) /// Similarity %, nullable until scored
+  screenshotUrl String?
+  isBest        Boolean  @default(false)   /// Flags this user's best submission per challenge
+
+  submittedAt DateTime @default(now())
+
+  @@index([challengeId, score])
+  @@index([userId, challengeId])
+}
+
+/// Singleton row representing the global competition state.
+/// Should only ever have one row — updated in place, not inserted/deleted.
+model CompetitionState {
+  id               String            @id @default(cuid())
+  status           CompetitionStatus @default(NOT_STARTED)
+  currentRound     Int               @default(1)
+  locked           Boolean           @default(false)      /// true = submissions frozen
+  leaderboardFrozen Boolean          @default(false)       /// Separate toggle for freezing leaderboard visibility
+  updatedAt        DateTime          @updatedAt
+}
