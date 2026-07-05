@@ -4,6 +4,8 @@ import path from 'path';
 import { identityRouter } from './routes/identity.js';
 import { adminRouter } from './routes/admin.js';
 import { challengesRouter, adminChallengesRouter } from './routes/challenges.js';
+import { submissionsRouter } from './routes/submissions.js';
+import { competitionRouter } from './routes/competition.js';
 
 export function createApp(): Express {
   const app = express();
@@ -34,6 +36,8 @@ export function createApp(): Express {
   app.use('/api/challenges', challengesRouter);
   app.use('/api/admin', adminRouter);
   app.use('/api/admin/challenges', adminChallengesRouter);
+  app.use('/api/competition', competitionRouter);
+  app.use('/api/submissions', submissionsRouter);
 
   app.get('/api/health', (_req: Request, res: Response) => {
     res.json({ status: 'ok', service: 'cssbattle-backend', uptime: process.uptime() });

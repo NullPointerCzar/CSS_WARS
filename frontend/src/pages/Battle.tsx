@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft,
   Loader2,
@@ -9,6 +9,7 @@ import {
   Circle,
   Maximize2,
   Minimize2,
+  Send,
 } from 'lucide-react';
 import { useIdentity } from '../lib/identity.js';
 import { MonacoEditor } from '../components/Editor/MonacoEditor.js';
@@ -18,6 +19,10 @@ import {
   CompareView,
   type CompareMode,
 } from '../components/CompareTools/CompareModes.js';
+import {
+  SubmissionResult,
+  type SubmissionResultData,
+} from '../components/Submission/SubmissionResult.js';
 
 interface Challenge {
   id: string;
@@ -60,6 +65,11 @@ export function Battle() {
   const [compareMode, setCompareMode] = useState<CompareMode>('normal');
   const [isPreviewFullscreen, setIsPreviewFullscreen] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitResult, setSubmitResult] = useState<SubmissionResultData | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [rateLimitUntil, setRateLimitUntil] = useState<number>(0);
+  const lastSubmitRef = useRef<AbortController | null>(null);
 
   const { data: challenge, isLoading, isError } = useQuery<Challenge>({
     queryKey: ['challenge', id],
@@ -89,6 +99,72 @@ export function Battle() {
   const handleCssChange = useCallback((css: string) => {
     setCssCode(css);
   }, []);
+
+  // Fetch competition state for lock check
+  const { data: competitionState } = useQuery<{ locked: boolean; status: string }>({
+    queryKey: ['competition-state'],
+    queryFn: async () => {
+      const res = await fetch('/api/competition/state');
+      if (!res.ok) throw new Error('Failed to fetch competition state');
+      return res.json();
+    },
+    staleTime: 10_000,
+    refetchInterval: 15_000,
+  });
+
+  const isLocked = competitionState?.locked ?? true;
+
+  // Handle submission
+  const handleSubmit = useCallback(async () => {
+    if (isSubmitting || !identity || !challenge) return;
+
+    // Rate-limit: check if enough time has passed since last submission
+    const now = Date.now();
+    if (now < rateLimitUntil) return;
+
+    // Cancel any previous in-flight submission
+    if (lastSubmitRef.current) {
+      lastSubmitRef.current.abort();
+    }
+
+    const controller = new AbortController();
+    lastSubmitRef.current = controller;
+
+    setIsSubmitting(true);
+    setSubmitError(null);
+    setSubmitResult(null);
+
+    try {
+      const res = await fetch('/api/submissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: identity.id,
+          challengeId: challenge.id,
+          htmlCode,
+          cssCode,
+        }),
+        signal: controller.signal,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setSubmitError(data.error ?? `Submission failed (${res.status})`);
+      } else {
+        setSubmitResult(data as SubmissionResultData);
+      }
+    } catch (err: any) {
+      if (err.name === 'AbortError') return; // Ignore aborted requests
+      setSubmitError(err.message ?? 'Submission failed');
+    } finally {
+      setIsSubmitting(false);
+      // Rate-limit: disable button for 2 seconds
+      setRateLimitUntil(Date.now() + 2000);
+    }
+  }, [identity, challenge, htmlCode, cssCode, isSubmitting, rateLimitUntil]);
+
+  const canSubmit = !isSubmitting && !isLocked && !!identity && Date.now() >= rateLimitUntil;
 
   if (isLoading) {
     return (
@@ -141,7 +217,48 @@ export function Battle() {
           </div>
         </div>
 
-        <CompareModeToggle mode={compareMode} onModeChange={setCompareMode} />
+        <div className="flex items-center gap-3">
+          {/* Submit button */}
+          <div className="flex items-center gap-2">
+            {submitError && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20">
+                <AlertCircle className="w-3.5 h-3.5 text-red-400" />
+                <span className="text-xs text-red-400 max-w-[200px] truncate">{submitError}</span>
+              </div>
+            )}
+            {isLocked && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
+                <span className="text-xs text-amber-400">Submissions closed</span>
+              </div>
+            )}
+            <button
+              onClick={handleSubmit}
+              disabled={!canSubmit}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                isSubmitting
+                  ? 'bg-amber-600/50 text-amber-200 cursor-not-allowed'
+                  : !canSubmit
+                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                    : 'bg-amber-600 hover:bg-amber-500 text-white shadow-lg shadow-amber-500/20 hover:shadow-amber-500/30 active:scale-95'
+              }`}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Scoring...
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4" />
+                  Submit
+                </>
+              )}
+            </button>
+          </div>
+
+          <CompareModeToggle mode={compareMode} onModeChange={setCompareMode} />
+        </div>
       </div>
 
       {/* Main content: editor + preview */}
@@ -192,18 +309,34 @@ export function Battle() {
               </button>
             </div>
           </div>
-          <div className="flex-1 bg-slate-950 p-3 min-h-0">
-            <CompareView
-              mode={compareMode}
-              targetImageUrl={challenge.targetImageUrl}
-              iframeRef={iframeRef}
-            >
-              <LivePreview
-                htmlCode={htmlCode}
-                cssCode={cssCode}
+          <div className="flex-1 bg-slate-950 p-3 min-h-0 relative">
+            {/* Preview (always rendered) */}
+            <div className={submitResult ? 'opacity-30 pointer-events-none' : 'opacity-100'}>
+              <CompareView
+                mode={compareMode}
+                targetImageUrl={challenge.targetImageUrl}
                 iframeRef={iframeRef}
-              />
-            </CompareView>
+              >
+                <LivePreview
+                  htmlCode={htmlCode}
+                  cssCode={cssCode}
+                  iframeRef={iframeRef}
+                />
+              </CompareView>
+            </div>
+
+            {/* Submission result overlay */}
+            <AnimatePresence>
+              {submitResult && (
+                <div className="absolute inset-0 z-30 overflow-y-auto">
+                  <SubmissionResult
+                    result={submitResult}
+                    targetImageUrl={challenge.targetImageUrl}
+                    onClose={() => setSubmitResult(null)}
+                  />
+                </div>
+              )}
+            </AnimatePresence>
           </div>
         </motion.div>
       </div>
