@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useIdentity, clearIdentity } from './lib/identity.js';
 import { IdentitySelection } from './pages/IdentitySelection.js';
 import { ChallengeList } from './pages/ChallengeList.js';
-import { ChallengeDetail } from './pages/ChallengeDetail.js';
+import { Battle } from './pages/Battle.js';
 import { ChallengeManage } from './pages/admin/ChallengeManage.js';
 
 type Health = { status: string; service: string; uptime: number };
@@ -91,7 +91,7 @@ export default function App() {
             }
           />
           <Route path="/challenges" element={<ChallengeList />} />
-          <Route path="/challenges/:id" element={<ChallengeDetail />} />
+          <Route path="/challenges/:id" element={<Battle />} />
           {identity.role === 'ADMIN' && (
             <Route path="/admin/challenges" element={<ChallengeManage />} />
           )}
