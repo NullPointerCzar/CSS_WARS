@@ -6,6 +6,8 @@ import { adminRouter } from './routes/admin.js';
 import { challengesRouter, adminChallengesRouter } from './routes/challenges.js';
 import { submissionsRouter } from './routes/submissions.js';
 import { competitionRouter } from './routes/competition.js';
+import { leaderboardRouter, adminLeaderboardRouter } from './routes/leaderboard.js';
+import { getRenderServiceStatus } from './renderStatus.js';
 
 export function createApp(): Express {
   const app = express();
@@ -31,16 +33,30 @@ export function createApp(): Express {
 
   // Serve uploaded images statically
   app.use('/uploads', express.static(path.resolve('uploads')));
+  // Serve target images (from seed data)
+  app.use('/targets', express.static(path.resolve('targets')));
 
   app.use('/api', identityRouter);
   app.use('/api/challenges', challengesRouter);
   app.use('/api/admin', adminRouter);
   app.use('/api/admin/challenges', adminChallengesRouter);
+  app.use('/api/leaderboard', leaderboardRouter);
   app.use('/api/competition', competitionRouter);
+  app.use('/api/admin/leaderboard', adminLeaderboardRouter);
   app.use('/api/submissions', submissionsRouter);
 
   app.get('/api/health', (_req: Request, res: Response) => {
-    res.json({ status: 'ok', service: 'cssbattle-backend', uptime: process.uptime() });
+    const renderStatus = getRenderServiceStatus();
+    res.json({
+      status: 'ok',
+      service: 'cssbattle-backend',
+      uptime: process.uptime(),
+      renderService: {
+        status: renderStatus.status,
+        port: renderStatus.port,
+        pid: renderStatus.pid,
+      },
+    });
   });
 
   return app;

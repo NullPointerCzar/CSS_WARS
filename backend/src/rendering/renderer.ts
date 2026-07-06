@@ -13,19 +13,12 @@ import { chromium, type Browser, type BrowserContext } from 'playwright';
 import path from 'path';
 import fs from 'fs';
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
+const BACKEND_DIR = process.cwd();
+const SUBMISSIONS_DIR = path.resolve(BACKEND_DIR, 'uploads', 'submissions');
 
-/** Viewport dimensions — 800×600 is a reasonable canvas for CSS Battle challenges. */
-export const VIEWPORT_WIDTH = 800;
-export const VIEWPORT_HEIGHT = 600;
-
-/** Hard timeout per render (milliseconds). */
-export const RENDER_TIMEOUT_MS = 10_000;
-
-/** Directory to save screenshots. */
-const SUBMISSIONS_DIR = path.resolve('uploads/submissions');
+const VIEWPORT_WIDTH = 800;
+const VIEWPORT_HEIGHT = 600;
+const RENDER_TIMEOUT_MS = 10_000;
 
 // Ensure output directory exists
 if (!fs.existsSync(SUBMISSIONS_DIR)) {

@@ -5,10 +5,17 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    strictPort: false,
     proxy: {
-      // Forward /api/* to the Express backend so the frontend can call
-      // relative URLs in dev and prod alike.
       '/api': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+      },
+      '/uploads': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+      },
+      '/targets': {
         target: 'http://localhost:4000',
         changeOrigin: true,
       },

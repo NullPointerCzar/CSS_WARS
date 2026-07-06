@@ -13,6 +13,40 @@ import { processSubmission, getUserSubmissionsForChallenge } from '../services/s
 export const submissionsRouter = Router();
 
 // ---------------------------------------------------------------------------
+// Rate limiter — prevents rapid-fire submissions
+// ---------------------------------------------------------------------------
+
+/**
+ * Simple in-memory rate limiter per userId.
+ * Limits to 1 submission per `windowMs` milliseconds.
+ */
+const submissionTimestamps = new Map<string, number>();
+
+const RATE_LIMIT_WINDOW_MS = 3_000; // 3 seconds between submissions per user
+
+// Clean up stale entries every 60 seconds to prevent memory leaks
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, ts] of submissionTimestamps) {
+    if (now - ts > RATE_LIMIT_WINDOW_MS) {
+      submissionTimestamps.delete(key);
+    }
+  }
+}, 60_000);
+
+function checkRateLimit(userId: string): { allowed: boolean; retryAfterMs?: number } {
+  const now = Date.now();
+  const lastSubmission = submissionTimestamps.get(userId);
+
+  if (lastSubmission && now - lastSubmission < RATE_LIMIT_WINDOW_MS) {
+    return { allowed: false, retryAfterMs: RATE_LIMIT_WINDOW_MS - (now - lastSubmission) };
+  }
+
+  submissionTimestamps.set(userId, now);
+  return { allowed: true };
+}
+
+// ---------------------------------------------------------------------------
 // POST /api/submissions — create & process a submission
 // ---------------------------------------------------------------------------
 
@@ -22,8 +56,23 @@ submissionsRouter.post(
     try {
       const { htmlCode, cssCode, userId, challengeId } = req.body;
 
+      // Check rate limit before processing
+      if (!userId) {
+        res.status(400).json({ error: 'userId is required' });
+        return;
+      }
+
+      const rateCheck = checkRateLimit(userId);
+      if (!rateCheck.allowed) {
+        res.status(429).json({
+          error: 'Please wait before submitting again.',
+          retryAfterMs: rateCheck.retryAfterMs,
+        });
+        return;
+      }
+
       // Validate required fields
-      if (!htmlCode || !cssCode || !userId || !challengeId) {
+      if (!htmlCode || !cssCode || !challengeId) {
         res.status(400).json({
           error: 'Missing required fields: htmlCode, cssCode, userId, challengeId',
         });

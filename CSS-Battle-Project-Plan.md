@@ -29,7 +29,7 @@ Reliability > feature count. Five things that never break beat twenty-five thing
 
 ## 2. Why This Scope (Context)
 
-This isn't "the next CSSBattle.org" — it's software to run **one live event**, for roughly **10–15 concurrent participants**, over a few hours or days. That changes the engineering priorities:
+This isn't "the next CSSBattle.org" — it's software to run **one live event**, for roughly **50 concurrent participants**, over a few hours or days. That changes the engineering priorities:
 
 - Optimize for **stability** and **ease of administration**, not feature breadth.
 - The scoring/rendering pipeline is the highest-risk, highest-effort part — everything else is fairly standard CRUD + auth web development.

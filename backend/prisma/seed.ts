@@ -1,6 +1,29 @@
 import { PrismaClient, Role, Difficulty, CompetitionStatus } from '@prisma/client';
+import sharp from 'sharp';
+import path from 'path';
+import fs from 'fs';
 
 const prisma = new PrismaClient();
+
+const UPLOADS_DIR = path.resolve('uploads', 'challenges');
+const TARGETS_DIR = path.resolve('targets');
+
+function ensureDir(dir: string) {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+}
+
+async function writePlaceholderImage(filePath: string, color: string) {
+  const buf = await sharp({
+    create: {
+      width: 400,
+      height: 300,
+      channels: 4,
+      background: color,
+    },
+  }).png().toBuffer();
+  ensureDir(path.dirname(filePath));
+  fs.writeFileSync(filePath, buf);
+}
 
 async function main() {
   console.log('🌱 Seeding database...');
@@ -150,6 +173,15 @@ async function main() {
         createdBy: admin.id,
       },
     }),
+  ]);
+
+  ensureDir(TARGETS_DIR);
+  await Promise.all([
+    writePlaceholderImage(path.join(TARGETS_DIR, 'challenge-1.png'), '#ffffff'),
+    writePlaceholderImage(path.join(TARGETS_DIR, 'challenge-2.png'), '#222222'),
+    writePlaceholderImage(path.join(TARGETS_DIR, 'challenge-3.png'), '#0000ff'),
+    writePlaceholderImage(path.join(TARGETS_DIR, 'challenge-4.png'), '#ff0000'),
+    writePlaceholderImage(path.join(TARGETS_DIR, 'challenge-5.png'), '#ffffff'),
   ]);
 
   console.log(`  ✓ Created ${challenges.length} challenges`);

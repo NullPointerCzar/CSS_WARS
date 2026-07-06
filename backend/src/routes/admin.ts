@@ -2,10 +2,290 @@ import { Router, Request, Response } from 'express';
 import { prisma } from '../db.js';
 import { adminCheck } from '../middleware/adminCheck.js';
 import { Prisma } from '@prisma/client';
+import { sanitizeSubmission } from '../rendering/sanitize.js';
+import { findBestSubmission } from '../scoring/tiebreak.js';
+import type { RenderServiceResponse } from '../services/submission.js';
+
+const renderPort = process.env.RENDER_PORT ?? '4001';
+const RENDER_SERVICE_URL =
+  process.env.RENDER_SERVICE_URL ?? `http://localhost:${renderPort}`;
 
 export const adminRouter = Router();
 
 adminRouter.use(adminCheck);
+
+// ---------------------------------------------------------------------------
+// Competition Status
+// ---------------------------------------------------------------------------
+
+// PATCH /api/admin/competition/status — update status
+adminRouter.patch('/competition/status', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { status } = req.body;
+
+    const validStatuses = ['NOT_STARTED', 'RUNNING', 'PAUSED', 'ENDED'];
+    if (!status || !validStatuses.includes(status)) {
+      res.status(400).json({ error: `status must be one of: ${validStatuses.join(', ')}` });
+      return;
+    }
+
+    let state = await prisma.competitionState.findFirst();
+    if (!state) {
+      state = await prisma.competitionState.create({
+        data: {
+          status,
+          currentRound: 1,
+          locked: false,
+          leaderboardFrozen: false,
+        },
+      });
+    } else {
+      state = await prisma.competitionState.update({
+        where: { id: state.id },
+        data: { status },
+      });
+    }
+
+    res.json({ status: state.status });
+  } catch (err) {
+    console.error('Failed to update competition status', err);
+    res.status(500).json({ error: 'Failed to update competition status' });
+  }
+});
+
+// PATCH /api/admin/competition/lock — toggle submissions lock
+adminRouter.patch('/competition/lock', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { locked } = req.body;
+
+    if (typeof locked !== 'boolean') {
+      res.status(400).json({ error: 'locked must be a boolean' });
+      return;
+    }
+
+    let state = await prisma.competitionState.findFirst();
+    if (!state) {
+      state = await prisma.competitionState.create({
+        data: {
+          status: 'NOT_STARTED',
+          currentRound: 1,
+          locked,
+          leaderboardFrozen: false,
+        },
+      });
+    } else {
+      state = await prisma.competitionState.update({
+        where: { id: state.id },
+        data: { locked },
+      });
+    }
+
+    res.json({ locked: state.locked });
+  } catch (err) {
+    console.error('Failed to update competition lock', err);
+    res.status(500).json({ error: 'Failed to update competition lock' });
+  }
+});
+
+// PATCH /api/admin/competition/round — advance/set current round
+adminRouter.patch('/competition/round', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { currentRound } = req.body;
+
+    if (typeof currentRound !== 'number' || currentRound < 1 || !Number.isInteger(currentRound)) {
+      res.status(400).json({ error: 'currentRound must be a positive integer' });
+      return;
+    }
+
+    let state = await prisma.competitionState.findFirst();
+    if (!state) {
+      state = await prisma.competitionState.create({
+        data: {
+          status: 'NOT_STARTED',
+          currentRound,
+          locked: false,
+          leaderboardFrozen: false,
+        },
+      });
+    } else {
+      state = await prisma.competitionState.update({
+        where: { id: state.id },
+        data: { currentRound },
+      });
+    }
+
+    res.json({ currentRound: state.currentRound });
+  } catch (err) {
+    console.error('Failed to update round', err);
+    res.status(500).json({ error: 'Failed to update round' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Submission Review & Rejudge
+// ---------------------------------------------------------------------------
+
+// GET /api/admin/submissions?challengeId= — list all submissions for a challenge
+adminRouter.get('/submissions', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const challengeId = req.query.challengeId as string | undefined;
+
+    if (!challengeId) {
+      res.status(400).json({ error: 'Missing required query param: challengeId' });
+      return;
+    }
+
+    const submissions = await prisma.submission.findMany({
+      where: { challengeId },
+      orderBy: [{ isBest: 'desc' }, { score: 'desc' }],
+      select: {
+        id: true,
+        userId: true,
+        htmlCode: true,
+        cssCode: true,
+        codeLength: true,
+        score: true,
+        screenshotUrl: true,
+        isBest: true,
+        submittedAt: true,
+        user: {
+          select: { name: true, rollNumber: true },
+        },
+      },
+    });
+
+    res.json(
+      submissions.map((s) => ({
+        ...s,
+        score: s.score ? Number(s.score) : null,
+      })),
+    );
+  } catch (err) {
+    console.error('Failed to fetch submissions', err);
+    res.status(500).json({ error: 'Failed to fetch submissions' });
+  }
+});
+
+// POST /api/admin/submissions/:id/rejudge — re-run rendering/scoring for a submission
+adminRouter.post('/submissions/:id/rejudge', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const submission = await prisma.submission.findUnique({
+      where: { id },
+      include: { challenge: true },
+    });
+
+    if (!submission) {
+      res.status(404).json({ error: 'Submission not found' });
+      return;
+    }
+
+    // Re-sanitize (defense in depth)
+    const sanitized = sanitizeSubmission(submission.htmlCode, submission.cssCode);
+
+    // Call the rendering service
+    const renderRes = await fetch(`${RENDER_SERVICE_URL}/render`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        html: sanitized.html,
+        css: sanitized.css,
+        targetImageUrl: submission.challenge.targetImageUrl,
+        submissionId: submission.id,
+      }),
+      signal: AbortSignal.timeout(30_000),
+    });
+
+    if (!renderRes.ok) {
+      const body = await renderRes.json().catch(() => ({}));
+      res.status(502).json({
+        error: body.error ?? `Render service returned ${renderRes.status}`,
+      });
+      return;
+    }
+
+    let renderResult: RenderServiceResponse;
+    try {
+      renderResult = await renderRes.json();
+    } catch {
+      res.status(502).json({ error: 'Render service returned invalid JSON' });
+      return;
+    }
+
+    // Update the submission in-place (properly typed inline)
+    const updated = await prisma.submission.update({
+      where: { id },
+      data: {
+        rejudgedAt: new Date(),
+        ...(renderResult.success && renderResult.score !== undefined && renderResult.score !== null
+          ? { score: renderResult.score }
+          : {}),
+        ...(renderResult.success && renderResult.screenshotUrl
+          ? { screenshotUrl: renderResult.screenshotUrl }
+          : {}),
+      },
+    });
+
+    // Recalculate isBest inside a Prisma transaction to prevent race conditions
+    let bestId: string | null = null;
+
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const allUserScored = await tx.submission.findMany({
+        where: {
+          userId: submission.userId,
+          challengeId: submission.challengeId,
+          score: { not: null },
+        },
+        select: { id: true, score: true, codeLength: true, submittedAt: true },
+      });
+
+      const scoredEntries = allUserScored.map((s) => ({
+        id: s.id,
+        score: s.score ? Number(s.score) : null,
+        codeLength: s.codeLength,
+        submittedAt: s.submittedAt,
+      }));
+
+      bestId = findBestSubmission(scoredEntries);
+
+      if (bestId) {
+        await tx.submission.updateMany({
+          where: {
+            userId: submission.userId,
+            challengeId: submission.challengeId,
+            isBest: true,
+          },
+          data: { isBest: false },
+        });
+        await tx.submission.update({
+          where: { id: bestId },
+          data: { isBest: true },
+        });
+      }
+    });
+
+    res.json({
+      message: 'Rejudge complete',
+      id: updated.id,
+      score: updated.score ? Number(updated.score) : null,
+      screenshotUrl: updated.screenshotUrl,
+      isBest: bestId === updated.id,
+      rejudged: true,
+    });
+  } catch (err: any) {
+    console.error('Failed to rejudge submission', err);
+    if (err.message?.includes('Render service')) {
+      res.status(502).json({ error: err.message });
+      return;
+    }
+    res.status(500).json({ error: 'Failed to rejudge submission' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Participant Management
+// ---------------------------------------------------------------------------
 
 // POST /api/admin/participants
 // Bulk creates participants

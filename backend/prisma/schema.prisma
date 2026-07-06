@@ -89,6 +89,7 @@ model Submission {
   score         Decimal? @db.Decimal(5, 2) /// Similarity %, nullable until scored
   screenshotUrl String?
   isBest        Boolean  @default(false)   /// Flags this user's best submission per challenge
+  rejudgedAt    DateTime?                    /// Set when admin triggers a rejudge
 
   submittedAt DateTime @default(now())
 
@@ -99,10 +100,11 @@ model Submission {
 /// Singleton row representing the global competition state.
 /// Should only ever have one row — updated in place, not inserted/deleted.
 model CompetitionState {
-  id               String            @id @default(cuid())
-  status           CompetitionStatus @default(NOT_STARTED)
-  currentRound     Int               @default(1)
-  locked           Boolean           @default(false)      /// true = submissions frozen
-  leaderboardFrozen Boolean          @default(false)       /// Separate toggle for freezing leaderboard visibility
-  updatedAt        DateTime          @updatedAt
+  id                    String            @id @default(cuid())
+  status                CompetitionStatus @default(NOT_STARTED)
+  currentRound          Int               @default(1)
+  locked                Boolean           @default(false)           /// true = submissions frozen
+  leaderboardFrozen     Boolean           @default(false)           /// Separate toggle for freezing leaderboard visibility
+  frozenLeaderboardData Json?                                       /// Snapshot of ranked results created at freeze time
+  updatedAt             DateTime          @updatedAt
 }

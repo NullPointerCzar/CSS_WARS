@@ -5,6 +5,9 @@ import { IdentitySelection } from './pages/IdentitySelection.js';
 import { ChallengeList } from './pages/ChallengeList.js';
 import { Battle } from './pages/Battle.js';
 import { ChallengeManage } from './pages/admin/ChallengeManage.js';
+import { AdminDashboard } from './pages/admin/AdminDashboard.js';
+import { Leaderboard } from './pages/Leaderboard.js';
+import { Dashboard } from './pages/Dashboard.js';
 
 type Health = { status: string; service: string; uptime: number };
 
@@ -52,12 +55,18 @@ export default function App() {
           >
             Challenges
           </Link>
+          <Link
+            to="/leaderboard"
+            className="px-4 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+          >
+            Leaderboard
+          </Link>
           {identity.role === 'ADMIN' && (
             <Link
-              to="/admin/challenges"
+              to="/admin"
               className="px-4 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
             >
-              Manage
+              Admin
             </Link>
           )}
         </nav>
@@ -79,21 +88,15 @@ export default function App() {
 
       <main className="px-6 py-8 max-w-5xl mx-auto">
         <Routes>
-          <Route
-            path="/"
-            element={
-              <section className="bg-slate-900/50 border border-slate-800 rounded-2xl p-8 shadow-xl">
-                <h1 className="text-3xl font-bold mb-3 text-white">Dashboard</h1>
-                <p className="text-slate-400 text-lg">
-                  Welcome back, {identity.name}. The competition is ready.
-                </p>
-              </section>
-            }
-          />
+          <Route path="/" element={<Dashboard />} />
           <Route path="/challenges" element={<ChallengeList />} />
           <Route path="/challenges/:id" element={<Battle />} />
+          <Route path="/leaderboard" element={<Leaderboard />} />
           {identity.role === 'ADMIN' && (
-            <Route path="/admin/challenges" element={<ChallengeManage />} />
+            <>
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/challenges" element={<ChallengeManage />} />
+            </>
           )}
           <Route
             path="*"

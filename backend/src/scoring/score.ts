@@ -90,7 +90,7 @@ export async function compareImages(
     // Allocate diff buffer
     const diffBuffer = Buffer.alloc(screenshotBuffer.length);
 
-    // Run pixelmatch
+    // Run pixelmatch — exact pixel color comparison (threshold 0)
     const mismatchedPixels = pixelmatch(
       screenshotBuffer,
       targetBuffer,
@@ -98,9 +98,9 @@ export async function compareImages(
       width,
       height,
       {
-        threshold: 0.1, // 10% — small color differences are acceptable
-        alpha: 0.5,     // Semi-transparent diff overlay
-        includeAA: true, // Include anti-aliasing pixels in diff
+        threshold: 0,    // Exact pixel match — every pixel color must correspond
+        alpha: 0.5,       // Semi-transparent diff overlay
+        includeAA: false, // Count anti-aliased pixels as mismatches
       },
     );
 

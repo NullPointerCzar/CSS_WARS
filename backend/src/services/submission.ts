@@ -13,6 +13,7 @@ import { prisma } from '../db.js';
 import { validatePayload, sanitizeSubmission } from '../rendering/sanitize.js';
 import { findBestSubmission } from '../scoring/tiebreak.js';
 import { Prisma } from '@prisma/client';
+import { getRenderServiceStatus } from '../renderStatus.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -43,7 +44,7 @@ export interface SubmissionResult {
   error?: string;
 }
 
-interface RenderServiceResponse {
+export interface RenderServiceResponse {
   success: boolean;
   screenshotPath?: string;
   screenshotUrl?: string;
@@ -57,17 +58,24 @@ interface RenderServiceResponse {
 // ---------------------------------------------------------------------------
 
 /**
- * Process a submission through the full pipeline.
- *
- * Steps:
- * 1. Validate payload size
- * 2. Sanitize HTML/CSS (strip scripts, block external URLs)
- * 3. Create initial DB record (before rendering, so the submission exists)
- * 4. Call the rendering service to get screenshot + score
- * 5. Update DB record with results
- * 6. Recalculate isBest for this user + challenge
- * 7. Return the submission result
+ * Check if the rendering service is available before attempting a submission.
  */
+function checkRenderServiceAvailable(): void {
+  const status = getRenderServiceStatus();
+
+  if (status.status === 'error' || status.status === 'stopped') {
+    throw new Error(
+      'The scoring engine is not available. Please notify an organizer to restart the server.',
+    );
+  }
+
+  if (status.status === 'starting') {
+    throw new Error(
+      'The scoring engine is still starting up. Please wait a moment and try again.',
+    );
+  }
+}
+
 /**
  * Compute the user's rank among all participants for a given challenge.
  * The user's best submission is compared against others' best.
@@ -105,11 +113,12 @@ async function computeRank(userId: string, challengeId: string): Promise<number 
  * 1. Pre-checks: competition not locked, challenge exists + is published
  * 2. Validate payload size
  * 3. Sanitize HTML/CSS (strip scripts, block external URLs)
- * 4. Create initial DB record (before rendering, so the submission exists)
- * 5. Call the rendering service to get screenshot + score
- * 6. Update DB record with results
- * 7. In a Prisma transaction: recalculate isBest for this user + challenge
- * 8. Compute rank and return the result
+ * 4. Check render service availability
+ * 5. Create initial DB record (before rendering, so the submission exists)
+ * 6. Call the rendering service to get screenshot + score
+ * 7. Update DB record with results
+ * 8. In a Prisma transaction: recalculate isBest for this user + challenge
+ * 9. Compute rank and return the result
  */
 export async function processSubmission(
   input: SubmissionInput,
@@ -153,7 +162,10 @@ export async function processSubmission(
   // Calculate code length
   const codeLength = Buffer.byteLength(sanitizedHtml + sanitizedCss, 'utf8');
 
-  // 4. Create initial DB record (score null until rendering completes)
+  // 4. Check render service availability BEFORE creating a DB record
+  checkRenderServiceAvailable();
+
+  // 5. Create initial DB record (score null until rendering completes)
   const submission = await prisma.submission.create({
     data: {
       userId: input.userId,
@@ -167,7 +179,7 @@ export async function processSubmission(
     },
   });
 
-  // 5. Call the rendering service
+  // 6. Call the rendering service
   let renderResult: RenderServiceResponse;
   try {
     const res = await fetch(`${RENDER_SERVICE_URL}/render`, {
@@ -189,16 +201,32 @@ export async function processSubmission(
         error: body.error ?? `Render service returned ${res.status}`,
       };
     } else {
-      renderResult = await res.json();
+      try {
+        renderResult = await res.json();
+      } catch {
+        renderResult = {
+          success: false,
+          error: 'Render service returned invalid JSON',
+        };
+      }
     }
   } catch (err: any) {
-    renderResult = {
-      success: false,
-      error: `Failed to reach render service: ${err.message ?? 'Connection error'}`,
-    };
+    // Check if the render service is in a known failure state
+    const renderStatus = getRenderServiceStatus();
+    if (renderStatus.status === 'error' || renderStatus.status === 'stopped') {
+      renderResult = {
+        success: false,
+        error: 'The scoring engine is not available. Please notify an organizer to restart the server.',
+      };
+    } else {
+      renderResult = {
+        success: false,
+        error: `Failed to reach render service: ${err.message ?? 'Connection error'}. If this persists, notify an organizer.`,
+      };
+    }
   }
 
-  // 6. Update DB record with render results
+  // 7. Update DB record with render results
   const updateData: {
     score?: number;
     screenshotUrl?: string;
@@ -218,35 +246,38 @@ export async function processSubmission(
     });
   }
 
-  // 7. In a Prisma transaction: recalculate isBest for this user + challenge
-  //    Using a transaction prevents race conditions from rapid double-submission
-  const allUserScoredSubmissions = await prisma.submission.findMany({
-    where: {
-      userId: input.userId,
-      challengeId: input.challengeId,
-      score: { not: null },
-    },
-    select: {
-      id: true,
-      score: true,
-      codeLength: true,
-      submittedAt: true,
-    },
-  });
+  // 8. In a Prisma transaction: fetch, compute best, and update atomically
+  //    This prevents race conditions from rapid double-submission where two
+  //    requests could read stale data and both choose the same best submission.
+  let bestId: string | null = null;
 
-  // Cast score from Decimal to number for comparison
-  const submissionsForTiebreak = allUserScoredSubmissions.map((s) => ({
-    id: s.id,
-    score: s.score ? Number(s.score) : null,
-    codeLength: s.codeLength,
-    submittedAt: s.submittedAt,
-  }));
+  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    // Fetch current scored submissions inside the transaction for consistency
+    const allUserScored = await tx.submission.findMany({
+      where: {
+        userId: input.userId,
+        challengeId: input.challengeId,
+        score: { not: null },
+      },
+      select: {
+        id: true,
+        score: true,
+        codeLength: true,
+        submittedAt: true,
+      },
+    });
 
-  const bestId = findBestSubmission(submissionsForTiebreak);
+    // Cast score from Decimal to number for comparison
+    const submissionsForTiebreak = allUserScored.map((s) => ({
+      id: s.id,
+      score: s.score ? Number(s.score) : null,
+      codeLength: s.codeLength,
+      submittedAt: s.submittedAt,
+    }));
 
-  if (bestId) {
-    // Use a transaction for the isBest update to prevent race conditions
-    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    bestId = findBestSubmission(submissionsForTiebreak);
+
+    if (bestId) {
       // Reset all isBest flags for this user+challenge
       await tx.submission.updateMany({
         where: {
@@ -262,10 +293,10 @@ export async function processSubmission(
         where: { id: bestId },
         data: { isBest: true },
       });
-    });
-  }
+    }
+  });
 
-  // 8. Compute rank and return the result
+  // 9. Compute rank and return the result
   const rank = await computeRank(input.userId, input.challengeId);
 
   return {

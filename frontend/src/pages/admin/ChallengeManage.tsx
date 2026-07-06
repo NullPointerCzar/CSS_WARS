@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ADMIN_PIN } from '../../lib/config.js';
+import { getAdminPin, setAdminPin } from '../../lib/config.js';
 import {
   Plus,
   Loader2,
@@ -15,6 +15,7 @@ import {
   Circle,
   Swords,
   Upload,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface Challenge {
@@ -54,7 +55,7 @@ function ChallengeForm({
     mutationFn: async (data: { title: string; description: string; difficulty: string; roundNumber: number; targetImageUrl: string }) => {
       const res = await fetch('/api/admin/challenges', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-admin-pin': ADMIN_PIN },
+        headers: { 'Content-Type': 'application/json', 'x-admin-pin': getAdminPin()! },
         body: JSON.stringify(data),
       });
       if (!res.ok) {
@@ -70,7 +71,7 @@ function ChallengeForm({
         formData.append('image', imageFile);
         const imgRes = await fetch(`/api/admin/challenges/${createdChallenge.id}/image`, {
           method: 'POST',
-          headers: { 'x-admin-pin': ADMIN_PIN },
+          headers: { 'x-admin-pin': getAdminPin()! },
           body: formData,
         });
         if (!imgRes.ok) {
@@ -87,7 +88,7 @@ function ChallengeForm({
     mutationFn: async (data: { title?: string; description?: string; difficulty?: string; roundNumber?: number; targetImageUrl?: string }) => {
       const res = await fetch(`/api/admin/challenges/${challenge!.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'x-admin-pin': ADMIN_PIN },
+        headers: { 'Content-Type': 'application/json', 'x-admin-pin': getAdminPin()! },
         body: JSON.stringify(data),
       });
       if (!res.ok) {
@@ -102,7 +103,7 @@ function ChallengeForm({
         formData.append('image', imageFile);
         const imgRes = await fetch(`/api/admin/challenges/${challenge.id}/image`, {
           method: 'POST',
-          headers: { 'x-admin-pin': ADMIN_PIN },
+          headers: { 'x-admin-pin': getAdminPin()! },
           body: formData,
         });
         if (!imgRes.ok) {
@@ -286,17 +287,174 @@ function ChallengeForm({
   );
 }
 
+// ---------------------------------------------------------------------------
+// Confirm Dialog (inline, matching AdminDashboard pattern)
+// ---------------------------------------------------------------------------
+
+function ConfirmDialog({
+  open,
+  title,
+  message,
+  confirmLabel,
+  variant,
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean;
+  title: string;
+  message: string;
+  confirmLabel: string;
+  variant: 'danger' | 'warning';
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      onClick={(e) => e.target === e.currentTarget && onCancel()}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl w-full max-w-md"
+      >
+        <div className="flex items-center gap-3 mb-4">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+            variant === 'danger' ? 'bg-red-500/10' : 'bg-amber-500/10'
+          }`}>
+            <AlertCircle className={`w-5 h-5 ${variant === 'danger' ? 'text-red-400' : 'text-amber-400'}`} />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-white">{title}</h3>
+            <p className="text-sm text-slate-400 mt-1">{message}</p>
+          </div>
+        </div>
+        <div className="flex gap-3 justify-end">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 rounded-xl text-sm text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className={`px-4 py-2 rounded-xl text-sm font-medium text-white transition-colors ${
+              variant === 'danger'
+                ? 'bg-red-600 hover:bg-red-500'
+                : 'bg-amber-600 hover:bg-amber-500'
+            }`}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function AdminPinGate({ onPinSet }: { onPinSet: () => void }) {
+  const [pin, setPin] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isChecking, setIsChecking] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setIsChecking(true);
+
+    try {
+      // Verify PIN by calling a read-only admin endpoint
+      const res = await fetch('/api/admin/challenges', {
+        headers: { 'x-admin-pin': pin },
+      });
+
+      if (res.status === 401 || res.status === 403) {
+        throw new Error('Incorrect admin PIN');
+      }
+
+      setAdminPin(pin);
+      onPinSet();
+    } catch (err: any) {
+      setError(err.message || 'Failed to verify PIN');
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
+  return (
+    <div className="max-w-md mx-auto mt-24">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-slate-900/50 border border-slate-800 rounded-2xl p-8 shadow-xl text-center"
+      >
+        <div className="w-14 h-14 rounded-2xl bg-amber-500/10 mx-auto flex items-center justify-center mb-4">
+          <ShieldCheck className="w-7 h-7 text-amber-400" />
+        </div>
+        <h2 className="text-xl font-bold text-white mb-2">Admin Authentication</h2>
+        <p className="text-sm text-slate-400 mb-6">
+          Enter the shared admin PIN to manage challenges.
+        </p>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input
+            type="password"
+            value={pin}
+            onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+            placeholder="Enter admin PIN"
+            className="w-full text-center text-2xl tracking-[0.5em] bg-slate-950/50 border border-slate-800 text-white rounded-xl py-4 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all font-mono"
+            maxLength={4}
+            autoFocus
+            required
+          />
+
+          {error && (
+            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-sm text-red-400">
+              {error}
+            </motion.p>
+          )}
+
+          <button
+            type="submit"
+            disabled={isChecking || pin.length < 4}
+            className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 px-4 rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
+          >
+            {isChecking ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              'Unlock Challenge Manager'
+            )}
+          </button>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
 export function ChallengeManage() {
+  const [pinVerified, setPinVerified] = useState(!!getAdminPin());
+
+  if (!pinVerified) {
+    return <AdminPinGate onPinSet={() => setPinVerified(true)} />;
+  }
+
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editingChallenge, setEditingChallenge] = useState<Challenge | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const { data: challenges = [], isLoading, isError } = useQuery<Challenge[]>({
     queryKey: ['admin-all-challenges'],
     queryFn: async () => {
       const res = await fetch('/api/admin/challenges', {
-        headers: { 'x-admin-pin': ADMIN_PIN },
+        headers: { 'x-admin-pin': getAdminPin()! },
       });
       if (!res.ok) throw new Error('Failed to fetch challenges');
       return res.json();
@@ -307,7 +465,7 @@ export function ChallengeManage() {
     mutationFn: async (challengeId: string) => {
       const res = await fetch(`/api/admin/challenges/${challengeId}/publish`, {
         method: 'PATCH',
-        headers: { 'x-admin-pin': ADMIN_PIN },
+        headers: { 'x-admin-pin': getAdminPin()! },
       });
       if (!res.ok) {
         const err = await res.json();
@@ -325,7 +483,7 @@ export function ChallengeManage() {
     mutationFn: async (challengeId: string) => {
       const res = await fetch(`/api/admin/challenges/${challengeId}`, {
         method: 'DELETE',
-        headers: { 'x-admin-pin': ADMIN_PIN },
+        headers: { 'x-admin-pin': getAdminPin()! },
       });
       if (!res.ok) {
         const err = await res.json();
@@ -500,11 +658,7 @@ export function ChallengeManage() {
                           )}
                         </button>
                         <button
-                          onClick={() => {
-                            if (confirm('Are you sure you want to delete this challenge? This cannot be undone if it has no submissions.')) {
-                              deleteMutation.mutate(challenge.id);
-                            }
-                          }}
+                          onClick={() => setConfirmDeleteId(challenge.id)}
                           disabled={deleteMutation.isPending}
                           className="p-2 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
                           title="Delete"
@@ -524,6 +678,22 @@ export function ChallengeManage() {
           </table>
         </div>
       )}
+
+      {/* Delete confirmation dialog */}
+      <ConfirmDialog
+        open={confirmDeleteId !== null}
+        title="Delete Challenge"
+        message="Are you sure you want to delete this challenge? This cannot be undone if it has submissions."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={() => {
+          if (confirmDeleteId) {
+            deleteMutation.mutate(confirmDeleteId);
+            setConfirmDeleteId(null);
+          }
+        }}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
 
       <AnimatePresence>
         {showForm && (

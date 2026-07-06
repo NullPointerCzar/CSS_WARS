@@ -1,15 +1,14 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft,
   Loader2,
   AlertCircle,
   Circle,
-  Maximize2,
-  Minimize2,
   Send,
+  ImageIcon,
 } from 'lucide-react';
 import { useIdentity } from '../lib/identity.js';
 import { MonacoEditor } from '../components/Editor/MonacoEditor.js';
@@ -63,7 +62,6 @@ export function Battle() {
   const [htmlCode, setHtmlCode] = useState(DEFAULT_HTML);
   const [cssCode, setCssCode] = useState(DEFAULT_CSS);
   const [compareMode, setCompareMode] = useState<CompareMode>('normal');
-  const [isPreviewFullscreen, setIsPreviewFullscreen] = useState(false);
   const [initialized, setInitialized] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitResult, setSubmitResult] = useState<SubmissionResultData | null>(null);
@@ -118,11 +116,9 @@ export function Battle() {
   const handleSubmit = useCallback(async () => {
     if (isSubmitting || !identity || !challenge) return;
 
-    // Rate-limit: check if enough time has passed since last submission
     const now = Date.now();
     if (now < rateLimitUntil) return;
 
-    // Cancel any previous in-flight submission
     if (lastSubmitRef.current) {
       lastSubmitRef.current.abort();
     }
@@ -155,11 +151,10 @@ export function Battle() {
         setSubmitResult(data as SubmissionResultData);
       }
     } catch (err: any) {
-      if (err.name === 'AbortError') return; // Ignore aborted requests
+      if (err.name === 'AbortError') return;
       setSubmitError(err.message ?? 'Submission failed');
     } finally {
       setIsSubmitting(false);
-      // Rate-limit: disable button for 2 seconds
       setRateLimitUntil(Date.now() + 2000);
     }
   }, [identity, challenge, htmlCode, cssCode, isSubmitting, rateLimitUntil]);
@@ -194,7 +189,7 @@ export function Battle() {
 
   return (
     <div className="h-full flex flex-col -mx-6 -my-8">
-      {/* Top bar */}
+      {/* ─── Top bar ─── */}
       <div className="flex items-center justify-between px-6 py-3 border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm shrink-0">
         <div className="flex items-center gap-4">
           <Link
@@ -218,7 +213,6 @@ export function Battle() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Submit button */}
           <div className="flex items-center gap-2">
             {submitError && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20">
@@ -261,15 +255,10 @@ export function Battle() {
         </div>
       </div>
 
-      {/* Main content: editor + preview */}
+      {/* ─── Main content: editor | target + preview ─── */}
       <div className="flex-1 flex min-h-0">
-        {/* Editor panel */}
-        <motion.div
-          layout
-          className={`flex flex-col border-r border-slate-800 ${
-            isPreviewFullscreen ? 'w-0 overflow-hidden' : 'w-1/2'
-          } transition-all duration-300`}
-        >
+        {/* ─── Editor panel (wider — 60%) ─── */}
+        <div className="w-3/5 flex flex-col border-r border-slate-800">
           <div className="flex-1 min-h-0 p-3">
             {identity ? (
               <MonacoEditor
@@ -286,59 +275,68 @@ export function Battle() {
               </div>
             )}
           </div>
-        </motion.div>
+        </div>
 
-        {/* Preview panel */}
-        <motion.div
-          layout
-          className={`flex flex-col ${isPreviewFullscreen ? 'w-full' : 'w-1/2'} transition-all duration-300`}
-        >
-          <div className="flex items-center justify-between px-4 py-2 border-b border-slate-800 shrink-0">
-            <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Preview</span>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setIsPreviewFullscreen(!isPreviewFullscreen)}
-                className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-slate-800 transition-colors"
-                title={isPreviewFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
-              >
-                {isPreviewFullscreen ? (
-                  <Minimize2 className="w-3.5 h-3.5" />
-                ) : (
-                  <Maximize2 className="w-3.5 h-3.5" />
-                )}
-              </button>
+        {/* ─── Right panel (40%) — target image on top, preview below ─── */}
+        <div className="w-2/5 flex flex-col bg-slate-950 overflow-y-auto">
+          {/* ─── Target image (4:3 viewport, never stretched) ─── */}
+          <div className="flex flex-col border-b border-slate-800 shrink-0">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-slate-800 shrink-0 bg-slate-900/50">
+              <span className="text-xs font-medium text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                <ImageIcon className="w-3.5 h-3.5 text-amber-400" />
+                Target
+              </span>
+              <span className="text-[10px] text-slate-600">Reference image</span>
+            </div>
+            <div className="aspect-[4/3] bg-white/5 flex items-center justify-center overflow-hidden">
+              <img
+                src={challenge.targetImageUrl}
+                alt="Target"
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
             </div>
           </div>
-          <div className="flex-1 bg-slate-950 p-3 min-h-0 relative">
-            {/* Preview (always rendered) */}
-            <div className={submitResult ? 'opacity-30 pointer-events-none' : 'opacity-100'}>
-              <CompareView
-                mode={compareMode}
-                targetImageUrl={challenge.targetImageUrl}
-                iframeRef={iframeRef}
-              >
-                <LivePreview
-                  htmlCode={htmlCode}
-                  cssCode={cssCode}
-                  iframeRef={iframeRef}
-                />
-              </CompareView>
-            </div>
 
-            {/* Submission result overlay */}
-            <AnimatePresence>
-              {submitResult && (
-                <div className="absolute inset-0 z-30 overflow-y-auto">
-                  <SubmissionResult
-                    result={submitResult}
+          {/* ─── Live preview — same 4:3 aspect ratio as target ─── */}
+          <div className="flex flex-col flex-1 min-h-0">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-slate-800 shrink-0 bg-slate-900/50">
+              <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Preview</span>
+            </div>
+            <div className="flex-1 bg-slate-950 p-2 min-h-0 relative flex items-center justify-center">
+              <div className="aspect-[4/3] w-full relative">
+                <div className={submitResult ? 'opacity-30 pointer-events-none absolute inset-0' : 'opacity-100 absolute inset-0'}>
+                  <CompareView
+                    mode={compareMode}
                     targetImageUrl={challenge.targetImageUrl}
-                    onClose={() => setSubmitResult(null)}
-                  />
+                    iframeRef={iframeRef}
+                  >
+                    <LivePreview
+                      htmlCode={htmlCode}
+                      cssCode={cssCode}
+                      iframeRef={iframeRef}
+                    />
+                  </CompareView>
                 </div>
-              )}
-            </AnimatePresence>
+
+                {/* Submission result overlay */}
+                <AnimatePresence>
+                  {submitResult && (
+                    <div className="absolute inset-0 z-30 overflow-y-auto">
+                      <SubmissionResult
+                        result={submitResult}
+                        targetImageUrl={challenge.targetImageUrl}
+                        onClose={() => setSubmitResult(null)}
+                      />
+                    </div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
           </div>
-        </motion.div>
+        </div>
       </div>
     </div>
   );

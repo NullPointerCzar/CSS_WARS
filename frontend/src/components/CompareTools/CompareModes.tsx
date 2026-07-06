@@ -41,7 +41,7 @@ export function CompareModeToggle({
 }
 
 // ---------------------------------------------------------------------------
-// Split Slider — draggable vertical divider, visible only on hover
+// Split Slider — follows cursor on hover, no click-and-drag required
 // ---------------------------------------------------------------------------
 function SplitSlider({
   targetImageUrl,
@@ -51,16 +51,11 @@ function SplitSlider({
   isHovering: boolean;
 }) {
   const [splitPos, setSplitPos] = useState(50);
-  const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  }, []);
-
+  // Track mouse position on hover — updates split position automatically
   useEffect(() => {
-    if (!isDragging) return;
+    if (!isHovering) return;
 
     const handleMouseMove = (e: MouseEvent) => {
       const container = containerRef.current;
@@ -70,25 +65,19 @@ function SplitSlider({
       setSplitPos(Math.max(0, Math.min(100, pos)));
     };
 
-    const handleMouseUp = () => setIsDragging(false);
-
     window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging]);
-
-  const visible = isHovering || isDragging;
+  }, [isHovering]);
 
   return (
     <div
       ref={containerRef}
       className={`absolute inset-0 z-10 select-none transition-opacity duration-200 ${
-        visible ? 'opacity-100' : 'opacity-0'
+        isHovering ? 'opacity-100' : 'opacity-0'
       }`}
-      style={{ cursor: isDragging ? 'col-resize' : 'default' }}
+      style={{ cursor: 'col-resize' }}
     >
       {/* Target image — visible as the overlay, clipped from the right */}
       <div
@@ -105,16 +94,11 @@ function SplitSlider({
         />
       </div>
 
-      {/* Drag handle */}
+      {/* Split line — follows cursor position */}
       <div
-        className="absolute top-0 bottom-0 w-1 bg-amber-400 shadow-lg shadow-amber-500/50 z-20"
+        className="absolute top-0 bottom-0 w-0.5 bg-amber-400 shadow-lg shadow-amber-500/50 z-20 pointer-events-none"
         style={{ left: `${splitPos}%`, transform: 'translateX(-50%)' }}
-        onMouseDown={handleMouseDown}
-      >
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-amber-500 border-2 border-white shadow-lg flex items-center justify-center cursor-col-resize">
-          <Columns2 className="w-3.5 h-3.5 text-white" />
-        </div>
-      </div>
+      />
     </div>
   );
 }
@@ -191,8 +175,18 @@ function DiffMode({
       const html2canvas = (await import('html2canvas')).default;
       const pixelmatch = (await import('pixelmatch')).default;
 
-      // Capture the preview iframe content as a canvas
-      const previewCanvas = await html2canvas(iframe, {
+      // Access the iframe's content document directly — html2canvas struggles
+      // when passed an iframe element, but works reliably when given the inner document body.
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!iframeDoc?.body) {
+        throw new Error('Cannot access iframe content — check sandbox permissions');
+      }
+
+      // Let the browser finish layout/paint before capturing
+      await new Promise((r) => setTimeout(r, 200));
+
+      // Capture the iframe's content body (not the iframe element itself)
+      const previewCanvas = await html2canvas(iframeDoc.body, {
         backgroundColor: '#ffffff',
         scale: 1,
         useCORS: true,
@@ -213,21 +207,16 @@ function DiffMode({
       targetImg.crossOrigin = 'anonymous';
       await new Promise<void>((resolve, reject) => {
         targetImg.onload = () => {
-          // Draw target centered, maintaining aspect ratio
-          const scale = Math.min(
-            previewCanvas.width / targetImg.width,
-            previewCanvas.height / targetImg.height
-          );
-          const x = (previewCanvas.width - targetImg.width * scale) / 2;
-          const y = (previewCanvas.height - targetImg.height * scale) / 2;
-          targetCtx.drawImage(targetImg, x, y, targetImg.width * scale, targetImg.height * scale);
+          // Draw target stretched to fill the entire canvas — matches server-side
+          // scoring behavior (sharp.resize with fit: 'fill')
+          targetCtx.drawImage(targetImg, 0, 0, previewCanvas.width, previewCanvas.height);
           resolve();
         };
         targetImg.onerror = () => reject(new Error('Failed to load target image'));
         targetImg.src = targetImageUrl;
       });
 
-      // Run pixelmatch
+      // Run pixelmatch — exact pixel comparison matching server-side threshold
       const diffW = previewCanvas.width;
       const diffH = previewCanvas.height;
       const diffCanvas_ = document.createElement('canvas');
@@ -248,7 +237,7 @@ function DiffMode({
         diffData.data,
         diffW,
         diffH,
-        { threshold: 0.1, alpha: 0.5 }
+        { threshold: 0, alpha: 0.5 }
       );
 
       diffCtx.putImageData(diffData, 0, 0);
