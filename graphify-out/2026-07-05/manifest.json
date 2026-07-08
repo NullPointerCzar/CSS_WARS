@@ -1,0 +1,262 @@
+{
+  "/Users/sarwagyaacharya/projects/cssbattle/.claude/settings.json": {
+    "mtime": 1783222347.4575648,
+    "ast_hash": "e1073342e958ac9f00716938c8f165e3",
+    "semantic_hash": "e1073342e958ac9f00716938c8f165e3"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/.claude/settings.local.json": {
+    "mtime": 1783226686.394787,
+    "ast_hash": "3029d1e4e8c1b1d0ccbe95b929c14f30",
+    "semantic_hash": "3029d1e4e8c1b1d0ccbe95b929c14f30"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/.kilo/kilo.json": {
+    "mtime": 1783167582.772733,
+    "ast_hash": "cc1c40f06c8b86c769c0e21f4b4d01b1",
+    "semantic_hash": "cc1c40f06c8b86c769c0e21f4b4d01b1"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/.kilo/plugins/graphify.js": {
+    "mtime": 1783167582.7725174,
+    "ast_hash": "a8f0387c9261a65e48846f33ad6094f5",
+    "semantic_hash": "a8f0387c9261a65e48846f33ad6094f5"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/backend/package.json": {
+    "mtime": 1783224548.819508,
+    "ast_hash": "cc2989aa844a962d4ee77c5f6af85a43",
+    "semantic_hash": "cc2989aa844a962d4ee77c5f6af85a43"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/backend/prisma/migrations/20260705041457_init/migration.sql": {
+    "mtime": 1783224897.94577,
+    "ast_hash": "83e52574a5c924f79cf5d3a8842b7cc6",
+    "semantic_hash": "83e52574a5c924f79cf5d3a8842b7cc6"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/backend/prisma/seed.ts": {
+    "mtime": 1783224532.752851,
+    "ast_hash": "7e292b038a2e45534b9d371ed1818689",
+    "semantic_hash": "7e292b038a2e45534b9d371ed1818689"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/backend/src/app.ts": {
+    "mtime": 1783225146.84862,
+    "ast_hash": "66ab8ce1774280d5bec7ee5cc23008aa",
+    "semantic_hash": "66ab8ce1774280d5bec7ee5cc23008aa"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/backend/src/db.ts": {
+    "mtime": 1783225093.9313374,
+    "ast_hash": "170a5b85d2e7349f042f1a8a847cd041",
+    "semantic_hash": "170a5b85d2e7349f042f1a8a847cd041"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/backend/src/middleware/adminCheck.ts": {
+    "mtime": 1783225115.203987,
+    "ast_hash": "e93aae9be10be7cf0f658696366cd067",
+    "semantic_hash": "e93aae9be10be7cf0f658696366cd067"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/backend/src/routes/admin.ts": {
+    "mtime": 1783225118.458529,
+    "ast_hash": "baafa82e9429fb71588187cf3435bd27",
+    "semantic_hash": "baafa82e9429fb71588187cf3435bd27"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/backend/src/routes/identity.ts": {
+    "mtime": 1783225150.9040186,
+    "ast_hash": "a820fdb416ae67f0847cd4279cc425b9",
+    "semantic_hash": "a820fdb416ae67f0847cd4279cc425b9"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/backend/src/server.ts": {
+    "mtime": 1783222406.3043232,
+    "ast_hash": "dd9aaf8a4b76e1e6811fc7183bcb151a",
+    "semantic_hash": "dd9aaf8a4b76e1e6811fc7183bcb151a"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/backend/tsconfig.json": {
+    "mtime": 1783222406.245653,
+    "ast_hash": "8cfb3a818fbe489ea6665ca97840fa82",
+    "semantic_hash": "8cfb3a818fbe489ea6665ca97840fa82"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/frontend/package.json": {
+    "mtime": 1783225179.5698273,
+    "ast_hash": "15a2a1d174ca32a6ce3ba241c8611a8b",
+    "semantic_hash": "15a2a1d174ca32a6ce3ba241c8611a8b"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/frontend/postcss.config.js": {
+    "mtime": 1783222463.0996618,
+    "ast_hash": "c735540bb63936a123bc867d950c9f69",
+    "semantic_hash": "c735540bb63936a123bc867d950c9f69"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/frontend/src/App.tsx": {
+    "mtime": 1783225229.4865568,
+    "ast_hash": "ccb469c548b30a8bcb84aa6afdbceef0",
+    "semantic_hash": "ccb469c548b30a8bcb84aa6afdbceef0"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/frontend/src/lib/identity.ts": {
+    "mtime": 1783225191.703263,
+    "ast_hash": "1d3763414db7835d74c8bbd0d8816ce1",
+    "semantic_hash": "1d3763414db7835d74c8bbd0d8816ce1"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/frontend/src/main.tsx": {
+    "mtime": 1783222462.989751,
+    "ast_hash": "75209abee88294ebd77c0a9233cd4116",
+    "semantic_hash": "75209abee88294ebd77c0a9233cd4116"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/frontend/src/pages/IdentitySelection.tsx": {
+    "mtime": 1783225214.1903977,
+    "ast_hash": "f07a2c8b85956848162ba9336e3adacd",
+    "semantic_hash": "f07a2c8b85956848162ba9336e3adacd"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/frontend/tailwind.config.js": {
+    "mtime": 1783222463.01157,
+    "ast_hash": "5e9001435b67fd819c59969c30edf830",
+    "semantic_hash": "5e9001435b67fd819c59969c30edf830"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/frontend/tsconfig.app.json": {
+    "mtime": 1783225672.4648936,
+    "ast_hash": "b5705ba47fdb272e5bd8cb8265902c35",
+    "semantic_hash": "b5705ba47fdb272e5bd8cb8265902c35"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/frontend/tsconfig.json": {
+    "mtime": 1783222463.0621881,
+    "ast_hash": "a3d39fa780ebff65444de257f291ce6c",
+    "semantic_hash": "a3d39fa780ebff65444de257f291ce6c"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/frontend/tsconfig.node.json": {
+    "mtime": 1783222463.0712843,
+    "ast_hash": "a65e6336b99c4e921b35c12ed7b1c1ca",
+    "semantic_hash": "a65e6336b99c4e921b35c12ed7b1c1ca"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/frontend/vite.config.ts": {
+    "mtime": 1783222463.0885372,
+    "ast_hash": "dbbdd3b8421a1c23a1d02e5291f86b0d",
+    "semantic_hash": "dbbdd3b8421a1c23a1d02e5291f86b0d"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/package.json": {
+    "mtime": 1783225769.510877,
+    "ast_hash": "54e1203a6fea3da603a163a99d980944",
+    "semantic_hash": "54e1203a6fea3da603a163a99d980944"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/.agents/rules/graphify.md": {
+    "mtime": 1783224265.2499259,
+    "ast_hash": "f1e53ecc9194573d3c28fc116c743a2e",
+    "semantic_hash": "f1e53ecc9194573d3c28fc116c743a2e"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/.agents/workflows/graphify.md": {
+    "mtime": 1783224265.250171,
+    "ast_hash": "0bc020d491fca99550c1ea3de0a5f862",
+    "semantic_hash": "0bc020d491fca99550c1ea3de0a5f862"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/.claude/CLAUDE.md": {
+    "mtime": 1783167377.8541183,
+    "ast_hash": "db73b0edd7ffbc61ceac177130730865",
+    "semantic_hash": "db73b0edd7ffbc61ceac177130730865"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/.claude/skills/graphify/SKILL.md": {
+    "mtime": 1783222347.4564877,
+    "ast_hash": "cfc9393ee58a6404953c69901ae300c7",
+    "semantic_hash": "cfc9393ee58a6404953c69901ae300c7"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/.claude/skills/graphify/references/add-watch.md": {
+    "mtime": 1782093324.9005656,
+    "ast_hash": "d59d027fe449f06aa03905a01184e779",
+    "semantic_hash": "d59d027fe449f06aa03905a01184e779"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/.claude/skills/graphify/references/exports.md": {
+    "mtime": 1782093324.9038405,
+    "ast_hash": "9da2a2152e60a22f07f05fed5158f287",
+    "semantic_hash": "9da2a2152e60a22f07f05fed5158f287"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/.claude/skills/graphify/references/extraction-spec.md": {
+    "mtime": 1782093324.9043264,
+    "ast_hash": "2e620982acb506f557538cdcfb1ef6da",
+    "semantic_hash": "2e620982acb506f557538cdcfb1ef6da"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/.claude/skills/graphify/references/github-and-merge.md": {
+    "mtime": 1782093324.9044473,
+    "ast_hash": "cde13df085e4c492aeb7ba298a996d0d",
+    "semantic_hash": "cde13df085e4c492aeb7ba298a996d0d"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/.claude/skills/graphify/references/hooks.md": {
+    "mtime": 1782093324.904603,
+    "ast_hash": "3f545db6ce646650bb9de588f5512a27",
+    "semantic_hash": "3f545db6ce646650bb9de588f5512a27"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/.claude/skills/graphify/references/query.md": {
+    "mtime": 1782093324.9047897,
+    "ast_hash": "0b329f30b63b0bd89282848575c86428",
+    "semantic_hash": "0b329f30b63b0bd89282848575c86428"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/.claude/skills/graphify/references/transcribe.md": {
+    "mtime": 1782093324.9048977,
+    "ast_hash": "67b6a5fa6c0974e18f60db9f8932fbd8",
+    "semantic_hash": "67b6a5fa6c0974e18f60db9f8932fbd8"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/.claude/skills/graphify/references/update.md": {
+    "mtime": 1782093324.905064,
+    "ast_hash": "2f78598160bfb12ab775831e0787b02a",
+    "semantic_hash": "2f78598160bfb12ab775831e0787b02a"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/AGENTS.md": {
+    "mtime": 1783221537.3609097,
+    "ast_hash": "bc0b29672c2477b6cd1f43093a4701be",
+    "semantic_hash": "bc0b29672c2477b6cd1f43093a4701be"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/CLAUDE.md": {
+    "mtime": 1783167377.8545241,
+    "ast_hash": "82efb97a359f5c7290bf2513d14686be",
+    "semantic_hash": "82efb97a359f5c7290bf2513d14686be"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/CSS-Battle-Project-Plan.md": {
+    "mtime": 1783221590.2580395,
+    "ast_hash": "e0d658913dc848481f14d6b3f93a6d37",
+    "semantic_hash": "e0d658913dc848481f14d6b3f93a6d37"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/README.md": {
+    "mtime": 1783222828.4328504,
+    "ast_hash": "c3a89207d8e6f7167fa4c4248b76fa97",
+    "semantic_hash": "c3a89207d8e6f7167fa4c4248b76fa97"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/docker-compose.yml": {
+    "mtime": 1783224861.9718065,
+    "ast_hash": "ab756db3044321aa3581df26bf26f810",
+    "semantic_hash": "ab756db3044321aa3581df26bf26f810"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/frontend/index.html": {
+    "mtime": 1783222463.0236323,
+    "ast_hash": "d09f8e57ad112ef70b4262e97deb30e1",
+    "semantic_hash": "d09f8e57ad112ef70b4262e97deb30e1"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/tasks/TASK-01-prisma-schema.md": {
+    "mtime": 1783223804.020626,
+    "ast_hash": "e64716a443348c2f3e27f3cf9fc51f1b",
+    "semantic_hash": "e64716a443348c2f3e27f3cf9fc51f1b"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/tasks/TASK-02-identity-flow.md": {
+    "mtime": 1783224073.4258702,
+    "ast_hash": "31e2ceb0b908e86ce76f02c959831890",
+    "semantic_hash": "31e2ceb0b908e86ce76f02c959831890"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/tasks/TASK-03-challenges-crud.md": {
+    "mtime": 1783224073.4187531,
+    "ast_hash": "518197d268afb6317aeb83682e479c37",
+    "semantic_hash": "518197d268afb6317aeb83682e479c37"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/tasks/TASK-04-monaco-editor-preview.md": {
+    "mtime": 1783224073.4164352,
+    "ast_hash": "c18fdb78491ddb3121cdaee1ef6a1611",
+    "semantic_hash": "c18fdb78491ddb3121cdaee1ef6a1611"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/tasks/TASK-05-rendering-service.md": {
+    "mtime": 1783224073.414029,
+    "ast_hash": "6ea9ecee95e742ec0de9d3253ba6e918",
+    "semantic_hash": "6ea9ecee95e742ec0de9d3253ba6e918"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/tasks/TASK-06-submission-flow.md": {
+    "mtime": 1783224073.4114952,
+    "ast_hash": "5142a64c84587d7c6bcafaeb8ffef4e4",
+    "semantic_hash": "5142a64c84587d7c6bcafaeb8ffef4e4"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/tasks/TASK-07-leaderboard.md": {
+    "mtime": 1783224073.4076428,
+    "ast_hash": "b8409cf7241d876152f4f52b602db8f3",
+    "semantic_hash": "b8409cf7241d876152f4f52b602db8f3"
+  },
+  "/Users/sarwagyaacharya/projects/cssbattle/tasks/TASK-08-admin-panel.md": {
+    "mtime": 1783224073.3990145,
+    "ast_hash": "d0e775b10923fa095e94902afcce4a18",
+    "semantic_hash": "d0e775b10923fa095e94902afcce4a18"
+  }
+}
