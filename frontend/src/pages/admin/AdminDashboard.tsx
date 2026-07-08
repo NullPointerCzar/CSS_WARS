@@ -12,7 +12,6 @@ import {
   Snowflake,
   Download,
   Swords,
-  Users,
   Loader2,
   AlertCircle,
   ChevronRight,
@@ -23,6 +22,7 @@ import {
   ArrowUpCircle,
   ShieldCheck,
 } from 'lucide-react';
+import { AdminParticipantManagement } from './AdminParticipantManagement.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -956,25 +956,7 @@ export function AdminDashboard() {
           <CompetitionControls state={state} onRefresh={() => refetch()} />
           <LeaderboardControls state={state} onRefresh={() => refetch()} />
 
-          {/* Quick Links */}
-          <SectionCard
-            icon={<Users className="w-4 h-4 text-emerald-400" />}
-            title="Participant Management"
-            description="Create participants and manage PINs"
-          >
-            <div className="space-y-2">
-              <p className="text-sm text-slate-400">
-                Use the{' '}
-                <code className="text-xs bg-slate-800 px-1.5 py-0.5 rounded text-amber-400 font-mono">
-                  POST /api/admin/participants
-                </code>{' '}
-                endpoint to bulk-create participants.
-              </p>
-              <p className="text-xs text-slate-500">
-                Send an array of <code className="text-[10px] bg-slate-800 px-1 rounded">&#123; name, rollNumber?, pinCode? &#125;</code> objects.
-              </p>
-            </div>
-          </SectionCard>
+          <AdminParticipantManagement />
         </div>
 
         {/* Right column */}

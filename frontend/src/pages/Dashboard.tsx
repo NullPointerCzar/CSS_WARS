@@ -1,6 +1,8 @@
+import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
+import { useIdentity } from '../lib/identity.js';
 import {
   Swords,
   Loader2,
@@ -18,7 +20,6 @@ import {
   Flame,
   Sparkles,
 } from 'lucide-react';
-import { useIdentity } from '../lib/identity.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -435,8 +436,14 @@ const itemVariants = {
 
 export function Dashboard() {
   const identity = useIdentity();
+  const navigate = useNavigate();
 
-  // Fetch competition state
+  // Track the previous set of challenge IDs to detect "new" challenges appearing
+  const prevChallengeIdsRef = useRef<string[]>([]);
+  const hasNavigatedRef = useRef(false);
+  const prevStatusRef = useRef<string | null>(null);
+
+  // Fetch competition state — poll every 3s for near-instant challenge-start detection
   const { data: state, isLoading: stateLoading } = useQuery<CompetitionState>({
     queryKey: ['competition-state'],
     queryFn: async () => {
@@ -444,7 +451,7 @@ export function Dashboard() {
       if (!res.ok) throw new Error('Failed to fetch competition state');
       return res.json();
     },
-    refetchInterval: 15_000,
+    refetchInterval: 3_000,
   });
 
   // Fetch participants
@@ -458,7 +465,7 @@ export function Dashboard() {
     staleTime: 30_000,
   });
 
-  // Fetch challenges
+  // Fetch challenges — poll every 5s so new published challenges show up quickly
   const { data: challenges = [] } = useQuery<Challenge[]>({
     queryKey: ['challenges'],
     queryFn: async () => {
@@ -466,7 +473,8 @@ export function Dashboard() {
       if (!res.ok) throw new Error('Failed to fetch challenges');
       return res.json();
     },
-    staleTime: 30_000,
+    refetchInterval: 5_000,
+    staleTime: 2_000,
   });
 
   // Fetch overall leaderboard
@@ -480,6 +488,36 @@ export function Dashboard() {
     refetchInterval: 15_000,
     staleTime: 5_000,
   });
+
+  // Auto-navigation: When competition transitions to RUNNING and a new published
+  // challenge appears, take the participant directly to the editor for that challenge.
+  // If the participant navigates back, the flag is reset so they get re-directed
+  // again as long as challenges still exist — this fulfills "without requiring any click."
+  useEffect(() => {
+    if (!state || state.status !== 'RUNNING') {
+      // Competition isn't running — reset everything
+      hasNavigatedRef.current = false;
+      prevStatusRef.current = state?.status ?? null;
+      prevChallengeIdsRef.current = challenges.map((c) => c.id);
+      return;
+    }
+
+    const currentIds = challenges.map((c) => c.id);
+
+    // If the user navigated back to the dashboard, re-direct them again
+    // (the flag was reset by the effect cleanup or the route change logic).
+    if (!hasNavigatedRef.current && currentIds.length > 0) {
+      const sorted = [...challenges].sort((a, b) => a.roundNumber - b.roundNumber);
+      const target = sorted[0];
+      if (target) {
+        hasNavigatedRef.current = true;
+        navigate(`/challenges/${target.id}`);
+      }
+    }
+
+    prevStatusRef.current = state.status;
+    prevChallengeIdsRef.current = currentIds;
+  }, [state?.status, challenges, navigate]);
 
   const participantCount = participants.filter((p) => p.role === 'PARTICIPANT').length;
   const topEntries = overallLb?.entries ?? [];

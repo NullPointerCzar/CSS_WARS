@@ -1,6 +1,21 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { SlidersHorizontal, Eye, Columns2, ScanLine } from 'lucide-react';
 
+// ---------------------------------------------------------------------------
+// Module-level editor code — set by Battle.tsx on every code change,
+// read by DiffMode to submit to the rendering service.
+// Avoids fragile DOM parsing of the iframe srcdoc.
+// ---------------------------------------------------------------------------
+let _currentPreviewCode: { html: string; css: string } = { html: '', css: '' };
+
+export function setPreviewCode(html: string, css: string): void {
+  _currentPreviewCode = { html, css };
+}
+
+function getPreviewCode(): { html: string; css: string } {
+  return _currentPreviewCode;
+}
+
 export type CompareMode = 'normal' | 'split' | 'opacity' | 'diff';
 
 // ---------------------------------------------------------------------------
@@ -53,7 +68,6 @@ function SplitSlider({
   const [splitPos, setSplitPos] = useState(50);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Track mouse position on hover — updates split position automatically
   useEffect(() => {
     if (!isHovering) return;
 
@@ -79,7 +93,6 @@ function SplitSlider({
       }`}
       style={{ cursor: 'col-resize' }}
     >
-      {/* Target image — visible as the overlay, clipped from the right */}
       <div
         className="absolute inset-0"
         style={{
@@ -94,7 +107,6 @@ function SplitSlider({
         />
       </div>
 
-      {/* Split line — follows cursor position */}
       <div
         className="absolute top-0 bottom-0 w-0.5 bg-amber-400 shadow-lg shadow-amber-500/50 z-20 pointer-events-none"
         style={{ left: `${splitPos}%`, transform: 'translateX(-50%)' }}
@@ -121,7 +133,6 @@ function OpacitySlider({
         isHovering ? 'opacity-100' : 'opacity-0'
       }`}
     >
-      {/* Target image overlaid with opacity — keep pointer-events so slider works */}
       <div className="pointer-events-none w-full h-full">
         <img
           src={targetImageUrl}
@@ -131,7 +142,6 @@ function OpacitySlider({
           draggable={false}
         />
       </div>
-      {/* Slider at the bottom */}
       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3 bg-slate-900/80 backdrop-blur-sm rounded-lg px-4 py-2 border border-slate-700/50 min-w-[200px]">
         <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400 shrink-0" />
         <input
@@ -151,148 +161,212 @@ function OpacitySlider({
 }
 
 // ---------------------------------------------------------------------------
-// Difference Mode — html2canvas + pixelmatch
+// Difference Mode — server-rendered screenshot + server-side pixel diff
+//
+// Flow:
+//   1. On code change (debounced), POST {html, css, targetImageUrl} to /render
+//      (the isolated rendering service). The response includes a screenshotUrl
+//      at /uploads/submissions/submission-{id}.png and a score.
+//   2. With the screenshot in hand, POST {screenshotUrl, targetImageUrl} to
+//      /diff, which returns a PNG with the diff overlay. We also read the
+//      match-% out of the X-Diff-Score response header.
+//   3. The result is rendered as an <img> so the canvas isn't tainted by
+//      cross-origin fetches. The diff re-runs whenever the code changes,
+//      so the participant gets live feedback like the original task spec
+//      asked for.
 // ---------------------------------------------------------------------------
+
+const DEBOUNCE_MS = 700;
+
 function DiffMode({
   targetImageUrl,
-  iframeRef,
 }: {
   targetImageUrl: string;
-  iframeRef: React.RefObject<HTMLIFrameElement | null>;
 }) {
-  const [diffCanvas, setDiffCanvas] = useState<HTMLCanvasElement | null>(null);
+  const [diffUrl, setDiffUrl] = useState<string | null>(null);
+  const [score, setScore] = useState<number | null>(null);
   const [isComputing, setIsComputing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasRunOnce, setHasRunOnce] = useState(false);
+
+  const abortRef = useRef<AbortController | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const runDiff = useCallback(async () => {
-    const iframe = iframeRef.current;
-    if (!iframe) return;
+    // Cancel any in-flight render before starting a new one
+    abortRef.current?.abort();
+
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     setIsComputing(true);
     setError(null);
 
     try {
-      const html2canvas = (await import('html2canvas')).default;
-      const pixelmatch = (await import('pixelmatch')).default;
-
-      // Access the iframe's content document directly — html2canvas struggles
-      // when passed an iframe element, but works reliably when given the inner document body.
-      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-      if (!iframeDoc?.body) {
-        throw new Error('Cannot access iframe content — check sandbox permissions');
+      const { html, css } = getPreviewCode();
+      if (!html && !css) {
+        throw new Error('Type some HTML or CSS first to see a diff');
       }
 
-      // Let the browser finish layout/paint before capturing
-      await new Promise((r) => setTimeout(r, 200));
+      const tempId = `preview-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-      // Capture the iframe's content body (not the iframe element itself)
-      const previewCanvas = await html2canvas(iframeDoc.body, {
-        backgroundColor: '#ffffff',
-        scale: 1,
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
+      // 1. Render via the rendering service — gives us a screenshot URL
+      const renderRes = await fetch('/render', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          html,
+          css,
+          targetImageUrl,
+          submissionId: tempId,
+        }),
+        signal: controller.signal,
       });
 
-      // Load the target image onto a canvas
-      const targetCanvas = document.createElement('canvas');
-      targetCanvas.width = previewCanvas.width;
-      targetCanvas.height = previewCanvas.height;
-      const targetCtx = targetCanvas.getContext('2d');
-      if (!targetCtx) {
-        throw new Error('Could not get 2D context');
+      if (controller.signal.aborted) return;
+      if (!renderRes.ok) {
+        const body = await renderRes.json().catch(() => ({}));
+        throw new Error(body.error || `Render service returned ${renderRes.status}`);
       }
 
-      const targetImg = new Image();
-      targetImg.crossOrigin = 'anonymous';
-      await new Promise<void>((resolve, reject) => {
-        targetImg.onload = () => {
-          // Draw target stretched to fill the entire canvas — matches server-side
-          // scoring behavior (sharp.resize with fit: 'fill')
-          targetCtx.drawImage(targetImg, 0, 0, previewCanvas.width, previewCanvas.height);
-          resolve();
-        };
-        targetImg.onerror = () => reject(new Error('Failed to load target image'));
-        targetImg.src = targetImageUrl;
+      const renderData = await renderRes.json();
+      if (!renderData.success) {
+        throw new Error(renderData.error || 'Render failed');
+      }
+
+      const screenshotUrl: string | undefined = renderData.screenshotUrl;
+      if (!screenshotUrl) {
+        throw new Error('No screenshot URL returned by the render service');
+      }
+
+      // 2. Ask the render service for a diff PNG of that screenshot
+      const diffRes = await fetch('/diff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ screenshotUrl, targetImageUrl }),
+        signal: controller.signal,
       });
 
-      // Run pixelmatch — exact pixel comparison matching server-side threshold
-      const diffW = previewCanvas.width;
-      const diffH = previewCanvas.height;
-      const diffCanvas_ = document.createElement('canvas');
-      diffCanvas_.width = diffW;
-      diffCanvas_.height = diffH;
-      const diffCtx = diffCanvas_.getContext('2d');
-      if (!diffCtx) throw new Error('Could not get diff canvas context');
+      if (controller.signal.aborted) return;
+      if (!diffRes.ok) {
+        const body = await diffRes.json().catch(() => ({}));
+        throw new Error(body.error || `Diff service returned ${diffRes.status}`);
+      }
 
-      const diffData = diffCtx.createImageData(diffW, diffH);
-      const previewData = previewCanvas
-        .getContext('2d')!
-        .getImageData(0, 0, diffW, diffH);
-      const targetData = targetCtx.getImageData(0, 0, diffW, diffH);
+      // Read score from the header so we don't need to re-pixelmatch on the client
+      const headerScore = diffRes.headers.get('X-Diff-Score');
+      if (headerScore) {
+        const parsed = Number(headerScore);
+        if (!Number.isNaN(parsed)) setScore(parsed);
+      } else {
+        setScore(renderData.score ?? null);
+      }
 
-      pixelmatch(
-        previewData.data,
-        targetData.data,
-        diffData.data,
-        diffW,
-        diffH,
-        { threshold: 0, alpha: 0.5 }
-      );
+      // 3. Materialize the PNG into an object URL we can revoke later
+      const blob = await diffRes.blob();
+      if (controller.signal.aborted) return;
 
-      diffCtx.putImageData(diffData, 0, 0);
-      setDiffCanvas(diffCanvas_);
+      const objectUrl = URL.createObjectURL(blob);
+      setDiffUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return objectUrl;
+      });
+      setHasRunOnce(true);
     } catch (err: any) {
+      if (err.name === 'AbortError') return;
       setError(err.message || 'Failed to compute diff');
     } finally {
       setIsComputing(false);
     }
-  }, [targetImageUrl, iframeRef]);
+  }, [targetImageUrl]);
+
+  // Auto-run on code change (debounced). setPreviewCode is called by
+  // Battle.tsx on every code change; we just poll the latest snapshot.
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      runDiff();
+    }, DEBOUNCE_MS);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [runDiff]);
+
+  // Revoke any object URL on unmount
+  useEffect(() => {
+    return () => {
+      if (diffUrl) URL.revokeObjectURL(diffUrl);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="absolute inset-0 z-10">
-      {!diffCanvas && !isComputing && (
-        <div className="flex items-center justify-center h-full">
-          <button
-            onClick={runDiff}
-            className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-sm font-medium transition-colors shadow-lg shadow-amber-500/20"
-          >
-            <ScanLine className="w-4 h-4" />
-            Run Diff
-          </button>
+      {error && !isComputing && (
+        <div className="flex items-center justify-center h-full p-4">
+          <p className="text-sm text-red-400 text-center max-w-sm">{error}</p>
         </div>
       )}
 
-      {isComputing && (
+      {isComputing && !diffUrl && (
         <div className="flex items-center justify-center h-full">
           <div className="flex flex-col items-center gap-3 text-slate-400">
             <div className="w-6 h-6 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin" />
-            <p className="text-sm">Computing difference...</p>
+            <p className="text-sm">Scoring via rendering engine...</p>
           </div>
         </div>
       )}
 
-      {error && (
-        <div className="flex items-center justify-center h-full">
-          <p className="text-sm text-red-400">{error}</p>
+      {isComputing && diffUrl && (
+        <div className="w-full h-full relative">
+          <img
+            src={diffUrl}
+            alt="Previous diff (updating)"
+            className="w-full h-full object-contain opacity-60"
+          />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-3 text-slate-200 bg-slate-950/70 backdrop-blur-sm rounded-xl px-6 py-4 border border-slate-800">
+              <div className="w-6 h-6 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin" />
+              <p className="text-sm">Updating diff…</p>
+            </div>
+          </div>
         </div>
       )}
 
-      {diffCanvas && (
-        <div className="w-full h-full flex items-center justify-center">
+      {!isComputing && diffUrl && (
+        <div className="w-full h-full bg-slate-950 flex items-center justify-center">
           <img
-            src={diffCanvas.toDataURL()}
-            alt="Difference overlay"
-            className="max-w-full max-h-full object-contain"
+            src={diffUrl}
+            alt="Difference overlay — mismatched pixels highlighted"
+            className="w-full h-full object-contain"
           />
         </div>
       )}
 
-      {diffCanvas && (
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 z-20">
+      {diffUrl && score !== null && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 bg-slate-900/80 backdrop-blur-sm text-xs font-medium rounded-lg border border-slate-700/50 font-mono">
+          <span
+            className={
+              score >= 90
+                ? 'text-emerald-400'
+                : score >= 75
+                  ? 'text-blue-400'
+                  : score >= 50
+                    ? 'text-amber-400'
+                    : 'text-red-400'
+            }
+          >
+            {score.toFixed(2)}% match
+          </span>
+        </div>
+      )}
+
+      {hasRunOnce && !isComputing && (
+        <div className="absolute top-2 right-2 z-20">
           <button
             onClick={runDiff}
-            className="px-3 py-1.5 bg-slate-800/90 hover:bg-slate-700 text-xs text-slate-300 rounded-lg transition-colors backdrop-blur-sm"
+            className="px-3 py-1.5 bg-slate-800/90 hover:bg-slate-700 text-xs text-slate-300 rounded-lg transition-colors backdrop-blur-sm border border-slate-700/50"
           >
             Re-run
           </button>
@@ -308,12 +382,10 @@ function DiffMode({
 export function CompareView({
   mode,
   targetImageUrl,
-  iframeRef,
   children,
 }: {
   mode: CompareMode;
   targetImageUrl: string;
-  iframeRef: React.RefObject<HTMLIFrameElement | null>;
   children: React.ReactNode;
 }) {
   const [isHovering, setIsHovering] = useState(false);
@@ -324,12 +396,8 @@ export function CompareView({
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
-      {/* The preview (base layer) */}
-      <div className="w-full h-full">
-        {children}
-      </div>
+      <div className="w-full h-full">{children}</div>
 
-      {/* Compare mode overlays — visible only on hover except Diff */}
       {mode === 'split' && (
         <SplitSlider
           targetImageUrl={targetImageUrl}
@@ -346,7 +414,6 @@ export function CompareView({
         <DiffMode
           key={targetImageUrl}
           targetImageUrl={targetImageUrl}
-          iframeRef={iframeRef}
         />
       )}
     </div>

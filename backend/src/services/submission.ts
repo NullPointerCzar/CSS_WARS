@@ -14,6 +14,8 @@ import { validatePayload, sanitizeSubmission } from '../rendering/sanitize.js';
 import { findBestSubmission } from '../scoring/tiebreak.js';
 import { Prisma } from '@prisma/client';
 import { getRenderServiceStatus } from '../renderStatus.js';
+import path from 'path';
+import fs from 'fs';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -140,6 +142,21 @@ export async function processSubmission(
 
   if (!challenge.published) {
     throw new Error('Challenge is not published yet');
+  }
+
+  if (!challenge.targetImageUrl) {
+    throw new Error(
+      'This challenge has no target image yet — the admin must upload one before submissions can be scored',
+    );
+  }
+
+  // Reject early if the target image is missing on disk. Without this
+  // check, the submission proceeds to a render call that silently
+  // returns score=null and the participant wastes a submission.
+  if (!targetImageExistsOnDisk(challenge.targetImageUrl)) {
+    throw new Error(
+      `Target image file is missing on the server — the admin must re-upload it before submissions can be scored`,
+    );
   }
 
   // 2. Validate payload
@@ -335,4 +352,35 @@ export async function getUserSubmissionsForChallenge(
     ...s,
     score: s.score ? Number(s.score) : null,
   }));
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Verify that the URL stored on a challenge actually points to a file
+ * on disk. We check a few candidate locations because both the main
+ * API and the render service can be started with slightly different cwds
+ * (they both default to the backend dir, but we don't want to depend
+ * on that).
+ */
+function targetImageExistsOnDisk(targetImageUrl: string): boolean {
+  const filename = path.basename(targetImageUrl);
+  const relative = targetImageUrl.replace(/^\//, '');
+  const backendDir = process.cwd();
+
+  const candidates = [
+    path.resolve(backendDir, relative),
+    path.resolve(backendDir, 'uploads', 'challenges', filename),
+    path.resolve(backendDir, 'targets', filename),
+  ];
+
+  return candidates.some((p) => {
+    try {
+      return fs.existsSync(p);
+    } catch {
+      return false;
+    }
+  });
 }

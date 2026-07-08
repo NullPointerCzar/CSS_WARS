@@ -124,6 +124,11 @@ submissionsRouter.post(
         return;
       }
 
+      if (msg.includes('no target image yet') || msg.includes('Target image file is missing')) {
+        res.status(409).json({ error: msg });
+        return;
+      }
+
       if (msg.includes('not found')) {
         res.status(404).json({ error: msg });
         return;

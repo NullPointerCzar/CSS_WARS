@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Search, ArrowRight, Loader2, User as UserIcon } from 'lucide-react';
@@ -31,10 +31,12 @@ export function IdentitySelection() {
     p.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  /**
+   * Submit identity selection — shared by both the form submit and the
+   * auto-submit path (when no PIN is required).
+   */
+  const submitIdentity = useCallback(async (pinToSend: string | undefined) => {
     if (!selectedUser) return;
-    
     setError(null);
     setIsSubmitting(true);
 
@@ -44,7 +46,7 @@ export function IdentitySelection() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: selectedUser.id,
-          pinCode: selectedUser.hasPin ? pinCode : undefined,
+          pinCode: pinToSend,
         }),
       });
 
@@ -59,13 +61,26 @@ export function IdentitySelection() {
         name: data.name,
         role: data.role,
       });
-      // The App.tsx will automatically redirect since useIdentity will update
+      // App.tsx will detect the identity change and redirect automatically
     } catch (err: any) {
       setError(err.message);
     } finally {
       setIsSubmitting(false);
     }
+  }, [selectedUser]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    submitIdentity(selectedUser?.hasPin ? pinCode : undefined);
   };
+
+  /**
+   * Submit without a form event — used for auto-submit when a participant
+   * with no PIN configured is selected.
+   */
+  const submitDirect = useCallback(() => {
+    submitIdentity(undefined);
+  }, [submitIdentity]);
 
   const handleBack = () => {
     setSelectedUser(null);
@@ -132,9 +147,8 @@ export function IdentitySelection() {
                           onClick={() => {
                             setSelectedUser(p);
                             if (!p.hasPin) {
-                              // Auto-submit if no PIN is required
-                              const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
-                              setTimeout(() => handleSubmit(fakeEvent), 0);
+                              // No PIN required — submit immediately
+                              setTimeout(() => submitDirect(), 0);
                             }
                           }}
                           className="w-full flex items-center justify-between p-4 rounded-xl bg-slate-800/30 hover:bg-slate-800/60 border border-slate-700/50 hover:border-slate-600 transition-all group text-left"

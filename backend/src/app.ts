@@ -31,10 +31,41 @@ export function createApp(): Express {
   );
   app.use(express.json({ limit: '1mb' }));
 
-  // Serve uploaded images statically
-  app.use('/uploads', express.static(path.resolve('uploads')));
-  // Serve target images (from seed data)
-  app.use('/targets', express.static(path.resolve('targets')));
+  // Serve uploaded images statically.
+  // We pass the same CORS origin list to express.static so the
+  // browser can load these images into a canvas (needed by the
+  // DiffMode client). Without these headers, the canvas would be
+  // marked cross-origin and pixel reads would throw.
+  app.use(
+    '/uploads',
+    (req, res, next) => {
+      const origin = req.headers.origin;
+      if (
+        origin &&
+        (allowedOrigins.includes('*') || allowedOrigins.includes(origin))
+      ) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+      }
+      next();
+    },
+    express.static(path.resolve('uploads')),
+  );
+  app.use(
+    '/targets',
+    (req, res, next) => {
+      const origin = req.headers.origin;
+      if (
+        origin &&
+        (allowedOrigins.includes('*') || allowedOrigins.includes(origin))
+      ) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+      }
+      next();
+    },
+    express.static(path.resolve('targets')),
+  );
 
   app.use('/api', identityRouter);
   app.use('/api/challenges', challengesRouter);

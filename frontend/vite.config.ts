@@ -19,6 +19,17 @@ export default defineConfig({
         target: 'http://localhost:4000',
         changeOrigin: true,
       },
+      // Diff and render endpoints live on the isolated render service
+      // (process :4001) so a Playwright crash can never take down the
+      // main API.
+      '/render': {
+        target: 'http://localhost:4001',
+        changeOrigin: true,
+      },
+      '/diff': {
+        target: 'http://localhost:4001',
+        changeOrigin: true,
+      },
     },
   },
 });

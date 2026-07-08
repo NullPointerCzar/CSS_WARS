@@ -330,14 +330,14 @@ adminRouter.post('/participants/:id/pin', async (req: Request, res: Response): P
     const { id } = req.params;
     const { pinCode } = req.body;
 
-    if (!pinCode) {
+    if (pinCode === undefined || pinCode === null) {
       res.status(400).json({ error: 'pinCode is required' });
       return;
     }
 
     const updatedUser = await prisma.user.update({
       where: { id },
-      data: { pinCode },
+      data: { pinCode: pinCode || null }, // empty string clears the PIN
     });
 
     res.json({
@@ -357,5 +357,89 @@ adminRouter.post('/participants/:id/pin', async (req: Request, res: Response): P
       }
     }
     res.status(500).json({ error: 'Failed to update PIN' });
+  }
+});
+
+// PUT /api/admin/participants/:id
+// Edits a participant's name (and optionally rollNumber)
+adminRouter.put('/participants/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { name, rollNumber } = req.body;
+
+    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+      res.status(400).json({ error: 'name is required' });
+      return;
+    }
+
+    const existing = await prisma.user.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ error: 'Participant not found' });
+      return;
+    }
+
+    const updated = await prisma.user.update({
+      where: { id },
+      data: {
+        name: name.trim(),
+        ...(rollNumber !== undefined ? { rollNumber: rollNumber || null } : {}),
+      },
+      select: { id: true, name: true, rollNumber: true, pinCode: true, role: true },
+    });
+
+    res.json({
+      id: updated.id,
+      name: updated.name,
+      rollNumber: updated.rollNumber,
+      role: updated.role,
+      hasPin: !!updated.pinCode,
+    });
+  } catch (err) {
+    console.error('Failed to update participant', err);
+    if (err instanceof Prisma.PrismaClientKnownRequestError) {
+      if (err.code === 'P2002') {
+        res.status(400).json({ error: 'A participant with this name already exists' });
+        return;
+      }
+    }
+    res.status(500).json({ error: 'Failed to update participant' });
+  }
+});
+
+// DELETE /api/admin/participants/:id
+// Deletes a participant — only allowed if they have no submissions
+adminRouter.delete('/participants/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      res.status(404).json({ error: 'Participant not found' });
+      return;
+    }
+
+    // Check for existing submissions
+    const submissionCount = await prisma.submission.count({ where: { userId: id } });
+    if (submissionCount > 0) {
+      res.status(409).json({
+        error: `Cannot delete participant with ${submissionCount} submission(s). Remove their submissions first.`,
+      });
+      return;
+    }
+
+    // Check if they created any challenges
+    const challengeCount = await prisma.challenge.count({ where: { createdBy: id } });
+    if (challengeCount > 0) {
+      res.status(409).json({
+        error: `Cannot delete this admin user — they created ${challengeCount} challenge(s).`,
+      });
+      return;
+    }
+
+    await prisma.user.delete({ where: { id } });
+    res.json({ message: 'Participant deleted successfully' });
+  } catch (err) {
+    console.error('Failed to delete participant', err);
+    res.status(500).json({ error: 'Failed to delete participant' });
   }
 });

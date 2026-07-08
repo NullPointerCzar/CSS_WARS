@@ -7,7 +7,6 @@ interface LivePreviewProps {
 }
 
 export function LivePreview({ htmlCode, cssCode, iframeRef }: LivePreviewProps) {
-  // Build the combined HTML document from user's HTML + CSS
   const srcDoc = buildSrcDoc(htmlCode, cssCode);
 
   return (
@@ -16,7 +15,7 @@ export function LivePreview({ htmlCode, cssCode, iframeRef }: LivePreviewProps) 
       srcDoc={srcDoc}
       sandbox="allow-same-origin"
       title="Live Preview"
-      className="w-full h-full bg-white rounded-lg"
+      className="w-full h-full bg-white"
     />
   );
 }
@@ -31,7 +30,7 @@ function buildSrcDoc(html: string, css: string): string {
     /* Reset */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { width: 100%; min-height: 100%; }
-    body { font-family: sans-serif; }
+    body { background: #ffffff; font-family: sans-serif; }
     ${css}
   </style>
 </head>

@@ -406,10 +406,9 @@ function AdminPinGate({ onPinSet }: { onPinSet: () => void }) {
           <input
             type="password"
             value={pin}
-            onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+            onChange={(e) => setPin(e.target.value)}
             placeholder="Enter admin PIN"
             className="w-full text-center text-2xl tracking-[0.5em] bg-slate-950/50 border border-slate-800 text-white rounded-xl py-4 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all font-mono"
-            maxLength={4}
             autoFocus
             required
           />
@@ -422,7 +421,7 @@ function AdminPinGate({ onPinSet }: { onPinSet: () => void }) {
 
           <button
             type="submit"
-            disabled={isChecking || pin.length < 4}
+            disabled={isChecking || pin.length < 1}
             className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 px-4 rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
           >
             {isChecking ? (

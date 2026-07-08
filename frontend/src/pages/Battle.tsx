@@ -7,6 +7,7 @@ import {
   Loader2,
   AlertCircle,
   Circle,
+  Eye,
   Send,
   ImageIcon,
 } from 'lucide-react';
@@ -16,6 +17,7 @@ import { LivePreview } from '../components/Preview/LivePreview.js';
 import {
   CompareModeToggle,
   CompareView,
+  setPreviewCode,
   type CompareMode,
 } from '../components/CompareTools/CompareModes.js';
 import {
@@ -67,6 +69,7 @@ export function Battle() {
   const [submitResult, setSubmitResult] = useState<SubmissionResultData | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [rateLimitUntil, setRateLimitUntil] = useState<number>(0);
+  const [targetImageError, setTargetImageError] = useState(false);
   const lastSubmitRef = useRef<AbortController | null>(null);
 
   const { data: challenge, isLoading, isError } = useQuery<Challenge>({
@@ -97,6 +100,12 @@ export function Battle() {
   const handleCssChange = useCallback((css: string) => {
     setCssCode(css);
   }, []);
+
+  // Keep the module-level store in sync with the current editor code
+  // so DiffMode can send it to the Playwright render service
+  useEffect(() => {
+    setPreviewCode(htmlCode, cssCode);
+  }, [htmlCode, cssCode]);
 
   // Fetch competition state for lock check
   const { data: competitionState } = useQuery<{ locked: boolean; status: string }>({
@@ -286,54 +295,62 @@ export function Battle() {
                 <ImageIcon className="w-3.5 h-3.5 text-amber-400" />
                 Target
               </span>
-              <span className="text-[10px] text-slate-600">Reference image</span>
+              <span className="text-[10px] text-slate-500">Reference</span>
             </div>
-            <div className="aspect-[4/3] bg-white/5 flex items-center justify-center overflow-hidden">
-              <img
-                src={challenge.targetImageUrl}
-                alt="Target"
-                className="w-full h-full object-contain"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
-              />
+            <div className="aspect-[4/3] bg-slate-950 flex items-center justify-center overflow-hidden">
+              {targetImageError ? (
+                <div className="flex flex-col items-center gap-2 text-amber-400 px-4 text-center">
+                  <ImageIcon className="w-8 h-8 opacity-50" />
+                  <p className="text-xs">Target image failed to load</p>
+                  <p className="text-[10px] text-slate-500">
+                    The admin may need to re-upload it.
+                  </p>
+                </div>
+              ) : (
+                <img
+                  src={challenge.targetImageUrl}
+                  alt="Target"
+                  className="w-full h-full object-contain bg-white"
+                  onError={() => setTargetImageError(true)}
+                />
+              )}
             </div>
           </div>
 
           {/* ─── Live preview — same 4:3 aspect ratio as target ─── */}
-          <div className="flex flex-col flex-1 min-h-0">
+          <div className="flex flex-col shrink-0">
             <div className="flex items-center justify-between px-4 py-2 border-b border-slate-800 shrink-0 bg-slate-900/50">
-              <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Preview</span>
+              <span className="text-xs font-medium text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Eye className="w-3.5 h-3.5 text-amber-400" />
+                Preview
+              </span>
             </div>
-            <div className="flex-1 bg-slate-950 p-2 min-h-0 relative flex items-center justify-center">
-              <div className="aspect-[4/3] w-full relative">
-                <div className={submitResult ? 'opacity-30 pointer-events-none absolute inset-0' : 'opacity-100 absolute inset-0'}>
-                  <CompareView
-                    mode={compareMode}
-                    targetImageUrl={challenge.targetImageUrl}
+            <div className="aspect-[4/3] w-full bg-slate-950 relative overflow-hidden">
+              <div className={submitResult ? 'opacity-30 pointer-events-none absolute inset-0' : 'opacity-100 absolute inset-0'}>
+                <CompareView
+                  mode={compareMode}
+                  targetImageUrl={challenge.targetImageUrl}
+                >
+                  <LivePreview
+                    htmlCode={htmlCode}
+                    cssCode={cssCode}
                     iframeRef={iframeRef}
-                  >
-                    <LivePreview
-                      htmlCode={htmlCode}
-                      cssCode={cssCode}
-                      iframeRef={iframeRef}
-                    />
-                  </CompareView>
-                </div>
-
-                {/* Submission result overlay */}
-                <AnimatePresence>
-                  {submitResult && (
-                    <div className="absolute inset-0 z-30 overflow-y-auto">
-                      <SubmissionResult
-                        result={submitResult}
-                        targetImageUrl={challenge.targetImageUrl}
-                        onClose={() => setSubmitResult(null)}
-                      />
-                    </div>
-                  )}
-                </AnimatePresence>
+                  />
+                </CompareView>
               </div>
+
+              {/* Submission result overlay */}
+              <AnimatePresence>
+                {submitResult && (
+                  <div className="absolute inset-0 z-30 overflow-y-auto">
+                    <SubmissionResult
+                      result={submitResult}
+                      targetImageUrl={challenge.targetImageUrl}
+                      onClose={() => setSubmitResult(null)}
+                    />
+                  </div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </div>

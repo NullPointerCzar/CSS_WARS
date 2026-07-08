@@ -1,123 +1,181 @@
 /**
- * Image comparison using Pixelmatch.
+ * Scoring service — orchestrates the full render → compare pipeline.
  *
- * Takes a screenshot image and a target image, resizes the target to match
- * the screenshot dimensions, then runs pixelmatch to compute a diff and
- * similarity percentage.
+ * Responsibilities:
+ *   1. Load both images from disk
+ *   2. Resize the target image to the reference canvas (nearest-neighbour)
+ *   3. Call the pixel comparator
+ *   4. Optionally encode the diff as a PNG
+ *   5. Return structured results
+ *
+ * Code-length is NOT computed here. That is handled separately by the
+ * submission service and tiebreak module. This module only computes
+ * visual similarity.
  */
 
 import sharp from 'sharp';
-import pixelmatch from 'pixelmatch';
 import fs from 'fs';
+import { comparePixels } from '../comparison/comparator.js';
+import { encodeDiffPng } from '../comparison/diffGenerator.js';
+import type { ScoredResult, DiffResult } from '../comparison/types.js';
 
 // ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-export interface ScoreResult {
-  success: true;
-  /** Similarity percentage (0–100), rounded to 2 decimal places. */
-  score: number;
-  /** Number of pixels that differ between the two images. */
-  mismatchedPixels: number;
-  /** Total pixels compared. */
-  totalPixels: number;
-}
-
-export interface ScoreError {
-  success: false;
-  error: string;
-}
-
-export type ScoreOutcome = ScoreResult | ScoreError;
-
-// ---------------------------------------------------------------------------
-// Scoring
+// Constants
 // ---------------------------------------------------------------------------
 
 /**
- * Compare a submission screenshot against the challenge's target image.
+ * Default reference canvas used to normalize both images before comparing.
+ * Matches the default render viewport (400×300, the CSS Battle standard).
  *
- * The target image is resized to match the screenshot's dimensions before
- * comparison, so viewport size mismatches don't penalize the score.
+ * Can be overridden by passing explicit dimensions to the scoring functions.
  */
-export async function compareImages(
+const DEFAULT_VIEWPORT_WIDTH = 400;
+const DEFAULT_VIEWPORT_HEIGHT = 300;
+
+// ---------------------------------------------------------------------------
+// Image loading & resizing
+// ---------------------------------------------------------------------------
+
+/**
+ * Load an image from disk and resize it to the reference canvas using
+ * nearest-neighbour interpolation.
+ *
+ * Nearest-neighbour is critical for CSS pixel art: it preserves hard colour
+ * edges exactly. A 1-pixel red line in the target stays a 1-pixel red line
+ * after resize instead of bleeding into a blurry gradient.
+ *
+ * The alpha channel is added if missing (pixelmatch requires RGBA data).
+ */
+async function loadAndResize(
+  imagePath: string,
+  targetWidth: number,
+  targetHeight: number,
+): Promise<Buffer> {
+  const buffer = await sharp(imagePath)
+    .resize(targetWidth, targetHeight, {
+      fit: 'contain',
+      background: { r: 255, g: 255, b: 255, alpha: 1 },
+      kernel: 'nearest',
+    })
+    .ensureAlpha()
+    .raw()
+    .toBuffer();
+
+  return buffer;
+}
+
+// ---------------------------------------------------------------------------
+// Scoring (visual similarity only)
+// ---------------------------------------------------------------------------
+
+/**
+ * Compute the visual similarity between a submission screenshot and a
+ * challenge's target image.
+ *
+ * Both images are resized to the same reference canvas (default 400×300)
+ * before comparison, so the result is independent of source resolution.
+ *
+ * @param screenshotPath  Path to the PNG screenshot (from Playwright render).
+ * @param targetPath      Path to the challenge's target PNG.
+ * @param viewportWidth   Optional reference canvas width (default 400).
+ * @param viewportHeight  Optional reference canvas height (default 300).
+ * @returns               ScoredResult with similarity percentage and pixel counts.
+ */
+export async function computeScore(
   screenshotPath: string,
-  targetImagePath: string,
-): Promise<ScoreOutcome> {
-  try {
-    // Verify both files exist
-    if (!fs.existsSync(screenshotPath)) {
-      return { success: false, error: `Screenshot not found: ${screenshotPath}` };
-    }
-    if (!fs.existsSync(targetImagePath)) {
-      return { success: false, error: `Target image not found: ${targetImagePath}` };
-    }
-
-    // Load screenshot metadata
-    const screenshotMeta = await sharp(screenshotPath).metadata();
-    const width = screenshotMeta.width ?? 0;
-    const height = screenshotMeta.height ?? 0;
-
-    if (width === 0 || height === 0) {
-      return { success: false, error: 'Screenshot has zero dimensions' };
-    }
-
-    // Load both images as RGBA raw buffers
-    // Resize target to match screenshot dimensions
-    const [screenshotBuffer, targetBuffer] = await Promise.all([
-      sharp(screenshotPath).ensureAlpha().raw().toBuffer(),
-      sharp(targetImagePath)
-        .resize(width, height, {
-          fit: 'fill', // Stretch target to match screenshot exactly
-          kernel: 'nearest', // Pixel-perfect for CSS Battle's precise designs
-        })
-        .ensureAlpha()
-        .raw()
-        .toBuffer(),
-    ]);
-
-    // The buffers should be the same length (width * height * 4 channels)
-    if (screenshotBuffer.length !== targetBuffer.length) {
-      // This shouldn't happen since we resized, but just in case:
-      const minLen = Math.min(screenshotBuffer.length, targetBuffer.length);
-      return {
-        success: false,
-        error: `Dimension mismatch: screenshot ${screenshotBuffer.length}B vs target ${targetBuffer.length}B`,
-      };
-    }
-
-    // Allocate diff buffer
-    const diffBuffer = Buffer.alloc(screenshotBuffer.length);
-
-    // Run pixelmatch — exact pixel color comparison (threshold 0)
-    const mismatchedPixels = pixelmatch(
-      screenshotBuffer,
-      targetBuffer,
-      diffBuffer,
-      width,
-      height,
-      {
-        threshold: 0,    // Exact pixel match — every pixel color must correspond
-        alpha: 0.5,       // Semi-transparent diff overlay
-        includeAA: false, // Count anti-aliased pixels as mismatches
-      },
-    );
-
-    const totalPixels = width * height;
-    const matchRatio = (totalPixels - mismatchedPixels) / totalPixels;
-    const score = Math.round(matchRatio * 100 * 100) / 100; // Round to 2 decimal places
-
-    return {
-      success: true,
-      score,
-      mismatchedPixels,
-      totalPixels,
-    };
-  } catch (err: any) {
-    return {
-      success: false,
-      error: `Image comparison failed: ${err.message ?? 'Unknown error'}`,
-    };
+  targetPath: string,
+  viewportWidth: number = DEFAULT_VIEWPORT_WIDTH,
+  viewportHeight: number = DEFAULT_VIEWPORT_HEIGHT,
+): Promise<ScoredResult> {
+  // Verify both files exist.
+  if (!fs.existsSync(screenshotPath)) {
+    throw new Error(`Screenshot not found: ${screenshotPath}`);
   }
+  if (!fs.existsSync(targetPath)) {
+    throw new Error(`Target image not found: ${targetPath}`);
+  }
+
+  // 1. Resize both images to the common reference canvas.
+  const [screenshotBuffer, targetBuffer] = await Promise.all([
+    loadAndResize(screenshotPath, viewportWidth, viewportHeight),
+    loadAndResize(targetPath, viewportWidth, viewportHeight),
+  ]);
+
+  // 2. Run pixel comparison.
+  const result = comparePixels(
+    screenshotBuffer,
+    targetBuffer,
+    viewportWidth,
+    viewportHeight,
+  );
+
+  return {
+    score: result.score,
+    mismatchedPixels: result.mismatchedPixels,
+    totalPixels: result.totalPixels,
+    width: result.width,
+    height: result.height,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Diff image generation
+// ---------------------------------------------------------------------------
+
+/**
+ * Generate a visual diff PNG highlighting the differences between a
+ * screenshot and a target image.
+ *
+ * This is equivalent to `computeScore` but also encodes the diff buffer
+ * as a PNG suitable for serving to the frontend.
+ *
+ * @param screenshotPath  Path to the PNG screenshot.
+ * @param targetPath      Path to the target PNG.
+ * @param viewportWidth   Optional reference canvas width (default 400).
+ * @param viewportHeight  Optional reference canvas height (default 300).
+ * @returns               DiffResult with the diff PNG + similarity stats.
+ */
+export async function generateDiff(
+  screenshotPath: string,
+  targetPath: string,
+  viewportWidth: number = DEFAULT_VIEWPORT_WIDTH,
+  viewportHeight: number = DEFAULT_VIEWPORT_HEIGHT,
+): Promise<DiffResult> {
+  // Verify both files exist.
+  if (!fs.existsSync(screenshotPath)) {
+    throw new Error(`Screenshot not found: ${screenshotPath}`);
+  }
+  if (!fs.existsSync(targetPath)) {
+    throw new Error(`Target image not found: ${targetPath}`);
+  }
+
+  // 1. Resize both images to the common reference canvas.
+  const [screenshotBuffer, targetBuffer] = await Promise.all([
+    loadAndResize(screenshotPath, viewportWidth, viewportHeight),
+    loadAndResize(targetPath, viewportWidth, viewportHeight),
+  ]);
+
+  // 2. Run pixel comparison.
+  const result = comparePixels(
+    screenshotBuffer,
+    targetBuffer,
+    viewportWidth,
+    viewportHeight,
+  );
+
+  // 3. Encode the diff buffer as a PNG.
+  const diffPng = await encodeDiffPng(
+    result.diffBuffer,
+    result.width,
+    result.height,
+  );
+
+  return {
+    diffPng,
+    score: result.score,
+    mismatchedPixels: result.mismatchedPixels,
+    totalPixels: result.totalPixels,
+    width: result.width,
+    height: result.height,
+  };
 }
