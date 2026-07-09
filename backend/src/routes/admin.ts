@@ -87,13 +87,13 @@ adminRouter.patch('/competition/lock', async (req: Request, res: Response): Prom
   }
 });
 
-// PATCH /api/admin/competition/round — advance/set current round
-adminRouter.patch('/competition/round', async (req: Request, res: Response): Promise<void> => {
+// PATCH /api/admin/competition/round/unlock — unlock a specific round (1, 2, or 3)
+adminRouter.patch('/competition/round/unlock', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { currentRound } = req.body;
+    const { round } = req.body;
 
-    if (typeof currentRound !== 'number' || currentRound < 1 || !Number.isInteger(currentRound)) {
-      res.status(400).json({ error: 'currentRound must be a positive integer' });
+    if (typeof round !== 'number' || round < 1 || round > 10 || !Number.isInteger(round)) {
+      res.status(400).json({ error: 'round must be a positive integer' });
       return;
     }
 
@@ -102,7 +102,8 @@ adminRouter.patch('/competition/round', async (req: Request, res: Response): Pro
       state = await prisma.competitionState.create({
         data: {
           status: 'NOT_STARTED',
-          currentRound,
+          currentRound: round,
+          unlockedRound: round,
           locked: false,
           leaderboardFrozen: false,
         },
@@ -110,14 +111,47 @@ adminRouter.patch('/competition/round', async (req: Request, res: Response): Pro
     } else {
       state = await prisma.competitionState.update({
         where: { id: state.id },
-        data: { currentRound },
+        data: {
+          currentRound: round,
+          unlockedRound: round,
+        },
       });
     }
 
-    res.json({ currentRound: state.currentRound });
+    res.json({ currentRound: state.currentRound, unlockedRound: state.unlockedRound });
   } catch (err) {
-    console.error('Failed to update round', err);
-    res.status(500).json({ error: 'Failed to update round' });
+    console.error('Failed to unlock round', err);
+    res.status(500).json({ error: 'Failed to unlock round' });
+  }
+});
+
+// PATCH /api/admin/competition/round/lock — lock all rounds (clear unlockedRound)
+adminRouter.patch('/competition/round/lock', async (req: Request, res: Response): Promise<void> => {
+  try {
+    let state = await prisma.competitionState.findFirst();
+    if (!state) {
+      state = await prisma.competitionState.create({
+        data: {
+          status: 'NOT_STARTED',
+          currentRound: 1,
+          unlockedRound: null,
+          locked: true,
+          leaderboardFrozen: false,
+        },
+      });
+    } else {
+      state = await prisma.competitionState.update({
+        where: { id: state.id },
+        data: {
+          unlockedRound: null,
+        },
+      });
+    }
+
+    res.json({ currentRound: state.currentRound, unlockedRound: state.unlockedRound });
+  } catch (err) {
+    console.error('Failed to lock rounds', err);
+    res.status(500).json({ error: 'Failed to lock rounds' });
   }
 });
 

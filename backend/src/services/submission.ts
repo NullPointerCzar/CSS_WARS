@@ -133,7 +133,7 @@ export async function processSubmission(
 
   const challenge = await prisma.challenge.findUnique({
     where: { id: input.challengeId },
-    select: { published: true, targetImageUrl: true },
+    select: { published: true, targetImageUrl: true, roundNumber: true },
   });
 
   if (!challenge) {
@@ -142,6 +142,15 @@ export async function processSubmission(
 
   if (!challenge.published) {
     throw new Error('Challenge is not published yet');
+  }
+
+  const unlockedRound = competitionState?.unlockedRound ?? null;
+  if (unlockedRound === null) {
+    throw new Error('No round is currently unlocked — submissions are not open for any round');
+  }
+
+  if (challenge.roundNumber !== unlockedRound) {
+    throw new Error(`Submissions are only open for round ${unlockedRound}. This challenge belongs to round ${challenge.roundNumber}`);
   }
 
   if (!challenge.targetImageUrl) {

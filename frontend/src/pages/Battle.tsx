@@ -10,6 +10,7 @@ import {
   Eye,
   Send,
   ImageIcon,
+  Lock,
 } from 'lucide-react';
 import { useIdentity } from '../lib/identity.js';
 import { MonacoEditor } from '../components/Editor/MonacoEditor.js';
@@ -108,7 +109,7 @@ export function Battle() {
   }, [htmlCode, cssCode]);
 
   // Fetch competition state for lock check
-  const { data: competitionState } = useQuery<{ locked: boolean; status: string }>({
+  const { data: competitionState } = useQuery<{ locked: boolean; status: string; unlockedRound: number | null }>({
     queryKey: ['competition-state'],
     queryFn: async () => {
       const res = await fetch('/api/competition/state');
@@ -119,7 +120,9 @@ export function Battle() {
     refetchInterval: 15_000,
   });
 
-  const isLocked = competitionState?.locked ?? true;
+  const isGloballyLocked = competitionState?.locked ?? true;
+  const isWrongRound = !competitionState?.unlockedRound || challenge?.roundNumber !== competitionState.unlockedRound;
+  const isLocked = isGloballyLocked || isWrongRound;
 
   // Handle submission
   const handleSubmit = useCallback(async () => {
@@ -229,10 +232,10 @@ export function Battle() {
                 <span className="text-xs text-red-400 max-w-[200px] truncate">{submitError}</span>
               </div>
             )}
-            {isLocked && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
-                <span className="text-xs text-amber-400">Submissions closed</span>
+            {isWrongRound && !isGloballyLocked && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-500/10 border border-slate-500/20">
+                <Lock className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-xs text-slate-400">Round {challenge.roundNumber} is locked</span>
               </div>
             )}
             <button

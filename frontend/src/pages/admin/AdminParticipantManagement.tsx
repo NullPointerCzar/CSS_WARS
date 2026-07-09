@@ -15,7 +15,6 @@ import {
   UserPlus,
   Upload,
   ChevronDown,
-  Copy,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -133,7 +132,7 @@ function BulkAddForm({ onAdded }: { onAdded: () => void }) {
         throw new Error(err.error || 'Failed to add participants');
       }
     },
-    onSuccess: (_, names) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['participants'] });
       setNamesText('');
       setError(null);

@@ -44,12 +44,20 @@ const upload = multer({
 });
 
 // ---------------------------------------------------------------------------
-// Public: GET /api/challenges — only published
+// Public: GET /api/challenges — only published AND in the unlocked round
 // ---------------------------------------------------------------------------
 challengesRouter.get('/', async (_req: Request, res: Response) => {
   try {
+    const state = await prisma.competitionState.findFirst();
+    const unlockedRound = state?.unlockedRound ?? null;
+
+    const where: Record<string, unknown> = { published: true };
+    if (unlockedRound !== null) {
+      where.roundNumber = unlockedRound;
+    }
+
     const challenges = await prisma.challenge.findMany({
-      where: { published: true },
+      where,
       select: {
         id: true,
         title: true,
@@ -70,14 +78,22 @@ challengesRouter.get('/', async (_req: Request, res: Response) => {
 });
 
 // ---------------------------------------------------------------------------
-// Public: GET /api/challenges/:id — single published challenge
+// Public: GET /api/challenges/:id — single published challenge (must be in unlocked round)
 // ---------------------------------------------------------------------------
 challengesRouter.get('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
+    const state = await prisma.competitionState.findFirst();
+    const unlockedRound = state?.unlockedRound ?? null;
+
+    const where: Record<string, unknown> = { id, published: true };
+    if (unlockedRound !== null) {
+      where.roundNumber = unlockedRound;
+    }
+
     const challenge = await prisma.challenge.findFirst({
-      where: { id, published: true },
+      where,
       select: {
         id: true,
         title: true,

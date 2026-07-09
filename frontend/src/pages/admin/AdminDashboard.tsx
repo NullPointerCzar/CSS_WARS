@@ -19,8 +19,8 @@ import {
   FileCode2,
   RotateCw,
   Eye,
-  ArrowUpCircle,
   ShieldCheck,
+  Target,
 } from 'lucide-react';
 import { AdminParticipantManagement } from './AdminParticipantManagement.js';
 
@@ -32,6 +32,7 @@ interface CompetitionState {
   locked: boolean;
   status: string;
   currentRound: number;
+  unlockedRound: number | null;
   leaderboardFrozen: boolean;
 }
 
@@ -207,11 +208,11 @@ function CompetitionControls({
   });
 
   const roundMutation = useMutation({
-    mutationFn: async (round: number) => {
-      const res = await fetch('/api/admin/competition/round', {
+    mutationFn: async (round: number | null) => {
+      const res = await fetch('/api/admin/competition/round/unlock', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'x-admin-pin': getAdminPin()! },
-        body: JSON.stringify({ currentRound: round }),
+        body: JSON.stringify({ round }),
       });
       if (!res.ok) throw new Error((await res.json()).error || 'Failed');
       return res.json();
@@ -222,14 +223,20 @@ function CompetitionControls({
     },
   });
 
-  const handleAction = useCallback((type: string, payload?: any) => {
-    const destructiveActions = ['ENDED'];
-    if (destructiveActions.includes(payload?.status ?? type)) {
-      setConfirmAction({ type, payload });
-      return;
-    }
-    executeAction(type, payload);
-  }, []);
+  const lockAllRoundsMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/admin/competition/round/lock', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'x-admin-pin': getAdminPin()! },
+      });
+      if (!res.ok) throw new Error((await res.json()).error || 'Failed');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['competition-state'] });
+      onRefresh();
+    },
+  });
 
   const executeAction = useCallback((type: string, payload?: any) => {
     switch (type) {
@@ -242,9 +249,21 @@ function CompetitionControls({
       case 'round':
         roundMutation.mutate(payload.round);
         break;
+      case 'lock-all-rounds':
+        lockAllRoundsMutation.mutate();
+        break;
     }
     setConfirmAction(null);
-  }, [statusMutation, lockMutation, roundMutation]);
+  }, [statusMutation, lockMutation, roundMutation, lockAllRoundsMutation]);
+
+  const handleAction = useCallback((type: string, payload?: any) => {
+    const destructiveActions = ['ENDED', 'lock-all-rounds'];
+    if (destructiveActions.includes(payload?.type ?? type)) {
+      setConfirmAction({ type, payload });
+      return;
+    }
+    executeAction(type, payload);
+  }, [executeAction]);
 
   const statusLabels: Record<string, string> = {
     NOT_STARTED: 'Not Started',
@@ -355,44 +374,74 @@ function CompetitionControls({
           </button>
         </div>
 
-        {/* Round control */}
-        <div className="flex items-center justify-between py-3 px-4 bg-slate-950/50 rounded-xl border border-slate-800/50">
-          <div className="flex items-center gap-3">
-            <ArrowUpCircle className="w-4 h-4 text-blue-400" />
-            <div>
-              <p className="text-sm font-medium text-white">Current Round</p>
-              <p className="text-xs text-slate-500">Round {state?.currentRound ?? 1}</p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => handleAction('round', { round: (state?.currentRound ?? 1) - 1 })}
-              disabled={isPending || (state?.currentRound ?? 1) <= 1}
-              className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors disabled:opacity-30"
-            >
-              −
-            </button>
-            <button
-              onClick={() => handleAction('round', { round: (state?.currentRound ?? 1) + 1 })}
-              disabled={isPending}
-              className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors disabled:opacity-30"
-            >
-              +
-            </button>
-          </div>
-        </div>
+         {/* Round control */}
+         <div className="bg-slate-950/50 rounded-xl border border-slate-800/50 p-4">
+           <div className="flex items-center gap-3 mb-4">
+             <Target className="w-4 h-4 text-blue-400" />
+             <div>
+               <p className="text-sm font-medium text-white">Rounds</p>
+               <p className="text-xs text-slate-500">
+                 {state?.unlockedRound
+                   ? `Round ${state.unlockedRound} is currently unlocked`
+                   : 'No round is currently unlocked'}
+               </p>
+             </div>
+           </div>
+           <div className="flex flex-wrap gap-2">
+             {[1, 2, 3].map((round) => (
+               <button
+                 key={round}
+                 onClick={() => {
+                   if (state?.unlockedRound === round) {
+                     setConfirmAction({ type: 'lock-all-rounds', payload: {} });
+                   } else {
+                     executeAction('round', { round });
+                   }
+                 }}
+                 disabled={isPending}
+                 className={`px-4 py-2 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${
+                   state?.unlockedRound === round
+                     ? 'bg-blue-600/20 text-blue-400 hover:bg-blue-600/30'
+                     : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                 }`}
+               >
+                 Round {round} {state?.unlockedRound === round ? '(Active)' : 'Locked'}
+               </button>
+             ))}
+           </div>
+         </div>
       </SectionCard>
 
       <ConfirmDialog
         open={confirmAction !== null}
-        title={confirmAction?.type === 'lock' ? 'Lock Submissions' : 'End Competition'}
+        title={
+          confirmAction?.type === 'lock'
+            ? 'Lock Submissions'
+            : confirmAction?.type === 'lock-all-rounds'
+              ? 'Lock All Rounds'
+              : 'End Competition'
+        }
         message={
           confirmAction?.type === 'lock'
             ? 'This will prevent all participants from submitting new solutions. Are you sure?'
-            : 'This will mark the competition as ended. No further submissions or changes will be possible for participants. Are you sure?'
+            : confirmAction?.type === 'lock-all-rounds'
+              ? 'This will lock the currently unlocked round. Participants will not be able to submit to any round. Are you sure?'
+              : 'This will mark the competition as ended. No further submissions or changes will be possible for participants. Are you sure?'
         }
-        confirmLabel={confirmAction?.type === 'lock' ? 'Lock Submissions' : 'End Competition'}
-        variant={confirmAction?.type === 'lock' ? 'warning' : 'danger'}
+        confirmLabel={
+          confirmAction?.type === 'lock'
+            ? 'Lock Submissions'
+            : confirmAction?.type === 'lock-all-rounds'
+              ? 'Lock Round'
+              : 'End Competition'
+        }
+        variant={
+          confirmAction?.type === 'lock'
+            ? 'warning'
+            : confirmAction?.type === 'lock-all-rounds'
+              ? 'danger'
+              : 'danger'
+        }
         onConfirm={() => {
           if (confirmAction) {
             executeAction(confirmAction.type, confirmAction.payload);
