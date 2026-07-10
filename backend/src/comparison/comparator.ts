@@ -16,7 +16,7 @@ import type { PixelComparisonOptions, ComparisonResult } from './types.js';
 // ---------------------------------------------------------------------------
 
 /**
- * Default pixelmatch options for CSS Battle.
+ * Default pixelmatch options for CSS WARS.
  *
  * Designed for comparing Playwright screenshots (browser-rendered CSS with
  * 1-2px of anti-aliasing at shape edges) against sharp pixel-art target

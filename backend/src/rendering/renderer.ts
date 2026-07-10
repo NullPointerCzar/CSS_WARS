@@ -126,7 +126,7 @@ async function createLockedContext(
     permissions: [],
     reducedMotion: 'reduce',
     colorScheme: 'light',
-    userAgent: 'CSSBattle/1.0 RenderingService (+https://cssbattle.yatra.nce)',
+    userAgent: 'CSSWARS/1.0 RenderingService',
   });
 
   // Block all external network requests at the page level.

@@ -1,7 +1,7 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, type FormEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getAdminPin } from '../../lib/config.js';
+import { apiPost, apiDelete, apiPut } from '../../lib/api.js';
 import {
   Users,
   Plus,
@@ -26,6 +26,7 @@ interface Participant {
   name: string;
   role: string;
   hasPin: boolean;
+  submissionCount: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -44,15 +45,9 @@ function SingleAddForm({
 
   const addMutation = useMutation({
     mutationFn: async (newName: string) => {
-      const res = await fetch('/api/admin/participants', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-admin-pin': getAdminPin()! },
-        body: JSON.stringify({ participants: [{ name: newName.trim() }] }),
+      return apiPost('/api/admin/participants', {
+        participants: [{ name: newName.trim() }],
       });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to add participant');
-      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['participants'] });
@@ -64,7 +59,7 @@ function SingleAddForm({
     onError: (err: Error) => setError(err.message),
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
     setError(null);
@@ -122,15 +117,7 @@ function BulkAddForm({ onAdded }: { onAdded: () => void }) {
   const addMutation = useMutation({
     mutationFn: async (names: string[]) => {
       const participants = names.map((n) => ({ name: n.trim() }));
-      const res = await fetch('/api/admin/participants', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-admin-pin': getAdminPin()! },
-        body: JSON.stringify({ participants }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to add participants');
-      }
+      return apiPost('/api/admin/participants', { participants });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['participants'] });
@@ -142,7 +129,7 @@ function BulkAddForm({ onAdded }: { onAdded: () => void }) {
     onError: (err: Error) => setError(err.message),
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     const names = namesText
       .split('\n')
@@ -249,15 +236,7 @@ function ParticipantRow({
 
   const editMutation = useMutation({
     mutationFn: async (newName: string) => {
-      const res = await fetch(`/api/admin/participants/${participant.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'x-admin-pin': getAdminPin()! },
-        body: JSON.stringify({ name: newName.trim() }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to update name');
-      }
+      return apiPut(`/api/admin/participants/${participant.id}`, { name: newName.trim() });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['participants'] });
@@ -270,14 +249,7 @@ function ParticipantRow({
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/admin/participants/${participant.id}`, {
-        method: 'DELETE',
-        headers: { 'x-admin-pin': getAdminPin()! },
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to delete');
-      }
+      return apiDelete(`/api/admin/participants/${participant.id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['participants'] });
@@ -289,15 +261,7 @@ function ParticipantRow({
 
   const pinMutation = useMutation({
     mutationFn: async (pin: string) => {
-      const res = await fetch(`/api/admin/participants/${participant.id}/pin`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-admin-pin': getAdminPin()! },
-        body: JSON.stringify({ pinCode: pin }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to set PIN');
-      }
+      return apiPost(`/api/admin/participants/${participant.id}/pin`, { pinCode: pin });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['participants'] });
@@ -356,12 +320,17 @@ function ParticipantRow({
             {participant.role === 'ADMIN' && (
               <span className="text-[10px] font-medium text-purple-500 bg-purple-500/10 px-1.5 py-0.5 rounded-md">ADMIN</span>
             )}
+            {participant.submissionCount > 0 && (
+              <span className="text-[10px] font-medium text-slate-500 bg-slate-500/10 px-1.5 py-0.5 rounded-md">
+                {participant.submissionCount} sub
+              </span>
+            )}
           </div>
         )}
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex items-center gap-1 shrink-0">
         {participant.role !== 'ADMIN' && (
           <>
             <button
@@ -455,10 +424,15 @@ function ParticipantRow({
                   <h3 className="text-lg font-semibold text-white">Delete Participant</h3>
                   <p className="text-sm text-slate-400 mt-1">
                     Remove <strong>{participant.name}</strong> from the participant list?
-                    {participant.hasPin && (
-                      <span className="block mt-1 text-amber-400">This participant has a PIN set.</span>
-                    )}
                   </p>
+                  {participant.submissionCount > 0 && (
+                    <p className="text-sm text-amber-400 mt-1">
+                      This participant has {participant.submissionCount} submission(s). They must be removed before deletion.
+                    </p>
+                  )}
+                  {participant.hasPin && (
+                    <span className="block mt-1 text-amber-400 text-sm">This participant has a PIN set.</span>
+                  )}
                 </div>
               </div>
               <div className="flex gap-3 justify-end">
@@ -470,7 +444,7 @@ function ParticipantRow({
                 </button>
                 <button
                   onClick={() => deleteMutation.mutate()}
-                  disabled={deleteMutation.isPending}
+                  disabled={deleteMutation.isPending || participant.submissionCount > 0}
                   className="px-4 py-2 rounded-xl text-sm font-medium bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white transition-colors flex items-center gap-2"
                 >
                   {deleteMutation.isPending ? (
@@ -503,10 +477,10 @@ function ParticipantRow({
 }
 
 // ---------------------------------------------------------------------------
-// Main Component
+// Shared component state hook
 // ---------------------------------------------------------------------------
 
-export function AdminParticipantManagement() {
+function useParticipants() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   const { data: participants = [], isLoading, isError } = useQuery<Participant[]>({
@@ -519,14 +493,21 @@ export function AdminParticipantManagement() {
     staleTime: 5_000,
   });
 
-  const nonAdminParticipants = participants.filter((p) => p.role !== 'ADMIN');
-  const adminAccounts = participants.filter((p) => p.role === 'ADMIN');
-
   const handleRefresh = () => setRefreshKey((k) => k + 1);
+
+  return { participants, isLoading, isError, refresh: handleRefresh };
+}
+
+// ---------------------------------------------------------------------------
+// Inline version for the Dashboard (compact)
+// ---------------------------------------------------------------------------
+
+export function AdminParticipantManagementInline() {
+  const { participants, isLoading, isError, refresh } = useParticipants();
+  const nonAdminParticipants = participants.filter((p: Participant) => p.role !== 'ADMIN');
 
   return (
     <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 shadow-xl">
-      {/* Header */}
       <div className="flex items-center gap-3 mb-5">
         <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
           <Users className="w-5 h-5 text-emerald-400" />
@@ -534,63 +515,114 @@ export function AdminParticipantManagement() {
         <div className="flex-1">
           <h2 className="text-lg font-semibold text-white">Participants</h2>
           <p className="text-xs text-slate-500">
-            {isLoading
-              ? 'Loading...'
-              : `${nonAdminParticipants.length} participant${nonAdminParticipants.length !== 1 ? 's' : ''} registered`}
+            {isLoading ? 'Loading...' : `${nonAdminParticipants.length} registered`}
           </p>
         </div>
       </div>
 
-      {/* Add forms */}
-      <div className="space-y-3 mb-5">
-        <SingleAddForm onAdded={handleRefresh} />
-        <BulkAddForm onAdded={handleRefresh} />
-      </div>
+      <SingleAddForm onAdded={refresh} />
 
-      {/* Error state */}
       {isError && (
-        <div className="flex items-center justify-center py-8 text-red-400">
-          <AlertCircle className="w-5 h-5 mr-2" />
-          <span className="text-sm">Failed to load participants</span>
+        <div className="flex items-center justify-center py-6 text-red-400 text-sm">
+          <AlertCircle className="w-4 h-4 mr-2" />
+          Failed to load
         </div>
       )}
 
-      {/* Loading */}
-      {isLoading && (
-        <div className="flex items-center justify-center py-8 text-slate-500">
-          <Loader2 className="w-6 h-6 animate-spin" />
-        </div>
-      )}
-
-      {/* Participant list */}
       {!isLoading && !isError && nonAdminParticipants.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-12 text-slate-500">
-          <Users className="w-10 h-10 mb-2 opacity-30" />
+        <div className="flex flex-col items-center justify-center py-8 text-slate-500">
+          <Users className="w-8 h-8 mb-2 opacity-30" />
           <p className="text-sm">No participants yet</p>
-          <p className="text-xs mt-1">Add participants above so they can join the competition.</p>
         </div>
       )}
 
       {!isLoading && !isError && nonAdminParticipants.length > 0 && (
-        <div className="space-y-1.5 max-h-[400px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
-          {nonAdminParticipants.map((p) => (
-            <ParticipantRow
-              key={p.id}
-              participant={p}
-              onUpdated={handleRefresh}
-            />
+        <div className="space-y-1.5 mt-4 max-h-[300px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+          {nonAdminParticipants.slice(0, 10).map((p: Participant) => (
+            <div key={p.id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-slate-800/20 border border-slate-800/30">
+              <div className="flex-1 min-w-0">
+                <span className="text-sm font-medium text-white truncate block">{p.name}</span>
+              </div>
+              {p.hasPin && <span className="text-[10px] text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-md">PIN</span>}
+              {p.submissionCount > 0 && (
+                <span className="text-[10px] text-slate-500 bg-slate-500/10 px-1.5 py-0.5 rounded-md">{p.submissionCount} sub</span>
+              )}
+            </div>
           ))}
         </div>
       )}
+    </div>
+  );
+}
 
-      {/* Admin accounts note */}
-      {adminAccounts.length > 0 && (
-        <div className="mt-4 pt-4 border-t border-slate-800/50">
-          <p className="text-xs text-slate-600">
-            Admin accounts ({adminAccounts.map((a) => a.name).join(', ')}) — not shown in the participant list.
-          </p>
+// ---------------------------------------------------------------------------
+// Full-page version for the sidebar layout
+// ---------------------------------------------------------------------------
+
+export function AdminParticipantManagement() {
+  const { participants, isLoading, isError, refresh } = useParticipants();
+  const nonAdminParticipants = participants.filter((p: Participant) => p.role !== 'ADMIN');
+  const adminAccounts = participants.filter((p: Participant) => p.role === 'ADMIN');
+
+  return (
+    <div className="max-w-5xl mx-auto">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-white tracking-tight">Participants</h1>
+        <p className="text-slate-400 mt-1 text-sm">Add, edit, and manage competition participants</p>
+      </div>
+
+      <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 shadow-xl">
+        {/* Add forms */}
+        <div className="space-y-3 mb-6">
+          <SingleAddForm onAdded={refresh} />
+          <BulkAddForm onAdded={refresh} />
         </div>
-      )}
+
+        {/* Error state */}
+        {isError && (
+          <div className="flex items-center justify-center py-8 text-red-400">
+            <AlertCircle className="w-5 h-5 mr-2" />
+            <span className="text-sm">Failed to load participants</span>
+          </div>
+        )}
+
+        {/* Loading */}
+        {isLoading && (
+          <div className="flex items-center justify-center py-8 text-slate-500">
+            <Loader2 className="w-6 h-6 animate-spin" />
+          </div>
+        )}
+
+        {/* Participant list */}
+        {!isLoading && !isError && nonAdminParticipants.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-12 text-slate-500">
+            <Users className="w-10 h-10 mb-2 opacity-30" />
+            <p className="text-sm">No participants yet</p>
+            <p className="text-xs mt-1">Add participants above so they can join the competition.</p>
+          </div>
+        )}
+
+        {!isLoading && !isError && nonAdminParticipants.length > 0 && (
+          <div className="space-y-1.5">
+            {nonAdminParticipants.map((p: Participant) => (
+              <ParticipantRow
+                key={p.id}
+                participant={p}
+                onUpdated={refresh}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Admin accounts note */}
+        {adminAccounts.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-slate-800/50">
+            <p className="text-xs text-slate-600">
+              Admin accounts ({adminAccounts.map((a) => a.name).join(', ')}) — not shown in the participant list.
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

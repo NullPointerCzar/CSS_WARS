@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getAdminPin, setAdminPin } from '../../lib/config.js';
+import { apiGet, apiPost, apiPut, apiPatch, apiDelete, apiUpload } from '../../lib/api.js';
 import {
   Plus,
   Loader2,
@@ -15,7 +15,6 @@ import {
   Circle,
   Swords,
   Upload,
-  ShieldCheck,
 } from 'lucide-react';
 
 interface Challenge {
@@ -47,78 +46,53 @@ function ChallengeForm({
   const [description, setDescription] = useState(challenge?.description ?? '');
   const [difficulty, setDifficulty] = useState<'EASY' | 'MEDIUM' | 'HARD'>(challenge?.difficulty ?? 'EASY');
   const [roundNumber, setRoundNumber] = useState(challenge?.roundNumber ?? 1);
-  const [targetImageUrl, setTargetImageUrl] = useState(challenge?.targetImageUrl ?? '');
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const createMutation = useMutation({
-    mutationFn: async (data: { title: string; description: string; difficulty: string; roundNumber: number; targetImageUrl: string }) => {
-      const res = await fetch('/api/admin/challenges', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-admin-pin': getAdminPin()! },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to create challenge');
-      }
-      return res.json();
+    mutationFn: async (data: { title: string; description: string; difficulty: string; roundNumber: number }) => {
+      return apiPost('/api/admin/challenges', data);
     },
-    onSuccess: async (createdChallenge) => {
-      // If there's an image file, upload it after creation
+    onSuccess: async (createdChallenge: any) => {
       if (imageFile) {
         const formData = new FormData();
         formData.append('image', imageFile);
-        const imgRes = await fetch(`/api/admin/challenges/${createdChallenge.id}/image`, {
-          method: 'POST',
-          headers: { 'x-admin-pin': getAdminPin()! },
-          body: formData,
-        });
-        if (!imgRes.ok) {
+        try {
+          await apiUpload(`/api/admin/challenges/${createdChallenge.id}/image`, formData);
+        } catch (e) {
           console.error('Image upload failed, but challenge was created');
         }
       }
       queryClient.invalidateQueries({ queryKey: ['admin-challenges'] });
-      onClose();
+      handleClose();
     },
     onError: (err: Error) => setError(err.message),
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (data: { title?: string; description?: string; difficulty?: string; roundNumber?: number; targetImageUrl?: string }) => {
-      const res = await fetch(`/api/admin/challenges/${challenge!.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'x-admin-pin': getAdminPin()! },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to update challenge');
-      }
-      return res.json();
+    mutationFn: async (data: { title?: string; description?: string; difficulty?: string; roundNumber?: number }) => {
+      return apiPut(`/api/admin/challenges/${challenge!.id}`, data);
     },
     onSuccess: async () => {
       if (imageFile && challenge) {
         const formData = new FormData();
         formData.append('image', imageFile);
-        const imgRes = await fetch(`/api/admin/challenges/${challenge.id}/image`, {
-          method: 'POST',
-          headers: { 'x-admin-pin': getAdminPin()! },
-          body: formData,
-        });
-        if (!imgRes.ok) {
+        try {
+          await apiUpload(`/api/admin/challenges/${challenge.id}/image`, formData);
+        } catch (e) {
           console.error('Image upload failed');
         }
       }
       queryClient.invalidateQueries({ queryKey: ['admin-challenges'] });
-      onClose();
+      handleClose();
     },
     onError: (err: Error) => setError(err.message),
   });
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     setError(null);
 
@@ -127,7 +101,6 @@ function ChallengeForm({
       description,
       difficulty,
       roundNumber,
-      targetImageUrl,
     };
 
     if (challenge) {
@@ -139,6 +112,7 @@ function ChallengeForm({
 
   const handleClose = () => {
     setImageFile(null);
+    setImagePreview(null);
     setError(null);
     onClose();
   };
@@ -216,21 +190,8 @@ function ChallengeForm({
             </div>
           </div>
 
-          {!challenge && (
-            <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1.5">Target Image URL</label>
-              <input
-                type="text"
-                value={targetImageUrl}
-                onChange={(e) => setTargetImageUrl(e.target.value)}
-                className="w-full bg-slate-950/50 border border-slate-800 text-white rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all"
-                placeholder="/targets/challenge-1.png"
-              />
-            </div>
-          )}
-
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1.5">Upload Target Image</label>
+            <label className="block text-sm font-medium text-slate-400 mb-1.5">Target Image</label>
             <label className="flex items-center gap-3 px-4 py-3 bg-slate-950/50 border border-dashed border-slate-700 rounded-xl cursor-pointer hover:border-amber-500/50 transition-colors">
               <Upload className="w-5 h-5 text-slate-500" />
               <span className="text-sm text-slate-400">
@@ -239,11 +200,33 @@ function ChallengeForm({
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
-                onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
+                onChange={(e) => {
+                  const file = e.target.files?.[0] ?? null;
+                  setImageFile(file);
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = () => setImagePreview(reader.result as string);
+                    reader.readAsDataURL(file);
+                  } else {
+                    setImagePreview(null);
+                  }
+                }}
                 className="hidden"
               />
             </label>
             <p className="text-xs text-slate-600 mt-1">Accepted: PNG, JPG, GIF, WebP, SVG (max 5MB)</p>
+            {imagePreview && (
+              <div className="mt-3 inline-block">
+                <p className="text-xs text-slate-500 mb-1">Preview:</p>
+                <img src={imagePreview} alt="Preview" className="h-24 rounded-lg border border-slate-700 object-contain bg-white" />
+              </div>
+            )}
+            {challenge?.targetImageUrl && !imageFile && (
+              <div className="mt-3 inline-block">
+                <p className="text-xs text-slate-500 mb-1">Current image:</p>
+                <img src={challenge.targetImageUrl} alt="Current" className="h-24 rounded-lg border border-slate-700 object-contain bg-white" />
+              </div>
+            )}
           </div>
 
           <AnimatePresence>
@@ -288,7 +271,7 @@ function ChallengeForm({
 }
 
 // ---------------------------------------------------------------------------
-// Confirm Dialog (inline, matching AdminDashboard pattern)
+// Confirm Dialog
 // ---------------------------------------------------------------------------
 
 function ConfirmDialog({
@@ -358,91 +341,7 @@ function ConfirmDialog({
   );
 }
 
-function AdminPinGate({ onPinSet }: { onPinSet: () => void }) {
-  const [pin, setPin] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [isChecking, setIsChecking] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setIsChecking(true);
-
-    try {
-      // Verify PIN by calling a read-only admin endpoint
-      const res = await fetch('/api/admin/challenges', {
-        headers: { 'x-admin-pin': pin },
-      });
-
-      if (res.status === 401 || res.status === 403) {
-        throw new Error('Incorrect admin PIN');
-      }
-
-      setAdminPin(pin);
-      onPinSet();
-    } catch (err: any) {
-      setError(err.message || 'Failed to verify PIN');
-    } finally {
-      setIsChecking(false);
-    }
-  };
-
-  return (
-    <div className="max-w-md mx-auto mt-24">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-slate-900/50 border border-slate-800 rounded-2xl p-8 shadow-xl text-center"
-      >
-        <div className="w-14 h-14 rounded-2xl bg-amber-500/10 mx-auto flex items-center justify-center mb-4">
-          <ShieldCheck className="w-7 h-7 text-amber-400" />
-        </div>
-        <h2 className="text-xl font-bold text-white mb-2">Admin Authentication</h2>
-        <p className="text-sm text-slate-400 mb-6">
-          Enter the shared admin PIN to manage challenges.
-        </p>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="password"
-            value={pin}
-            onChange={(e) => setPin(e.target.value)}
-            placeholder="Enter admin PIN"
-            className="w-full text-center text-2xl tracking-[0.5em] bg-slate-950/50 border border-slate-800 text-white rounded-xl py-4 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all font-mono"
-            autoFocus
-            required
-          />
-
-          {error && (
-            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-sm text-red-400">
-              {error}
-            </motion.p>
-          )}
-
-          <button
-            type="submit"
-            disabled={isChecking || pin.length < 1}
-            className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 px-4 rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
-          >
-            {isChecking ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              'Unlock Challenge Manager'
-            )}
-          </button>
-        </form>
-      </motion.div>
-    </div>
-  );
-}
-
 export function ChallengeManage() {
-  const [pinVerified, setPinVerified] = useState(!!getAdminPin());
-
-  if (!pinVerified) {
-    return <AdminPinGate onPinSet={() => setPinVerified(true)} />;
-  }
-
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editingChallenge, setEditingChallenge] = useState<Challenge | null>(null);
@@ -452,25 +351,13 @@ export function ChallengeManage() {
   const { data: challenges = [], isLoading, isError } = useQuery<Challenge[]>({
     queryKey: ['admin-all-challenges'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/challenges', {
-        headers: { 'x-admin-pin': getAdminPin()! },
-      });
-      if (!res.ok) throw new Error('Failed to fetch challenges');
-      return res.json();
+      return apiGet('/api/admin/challenges');
     },
   });
 
   const publishMutation = useMutation({
     mutationFn: async (challengeId: string) => {
-      const res = await fetch(`/api/admin/challenges/${challengeId}/publish`, {
-        method: 'PATCH',
-        headers: { 'x-admin-pin': getAdminPin()! },
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to toggle publish state');
-      }
-      return res.json();
+      return apiPatch(`/api/admin/challenges/${challengeId}/publish`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-challenges'] });
@@ -480,15 +367,7 @@ export function ChallengeManage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (challengeId: string) => {
-      const res = await fetch(`/api/admin/challenges/${challengeId}`, {
-        method: 'DELETE',
-        headers: { 'x-admin-pin': getAdminPin()! },
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to delete challenge');
-      }
-      return res.json();
+      return apiDelete(`/api/admin/challenges/${challengeId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-challenges'] });
@@ -518,14 +397,9 @@ export function ChallengeManage() {
   return (
     <div className="max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
-            <Swords className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-white tracking-tight">Challenge Management</h1>
-            <p className="text-slate-400 mt-1">Create, edit, publish, and manage CSS challenges</p>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Challenges</h1>
+          <p className="text-slate-400 mt-1 text-sm">Create, edit, publish, and manage CSS challenges</p>
         </div>
         <button
           onClick={() => setShowForm(true)}
@@ -614,15 +488,9 @@ export function ChallengeManage() {
                         challenge.published ? 'text-emerald-400' : 'text-slate-500'
                       }`}>
                         {challenge.published ? (
-                          <>
-                            <Globe className="w-3.5 h-3.5" />
-                            Published
-                          </>
+                          <><Globe className="w-3.5 h-3.5" /> Published</>
                         ) : (
-                          <>
-                            <Lock className="w-3.5 h-3.5" />
-                            Unpublished
-                          </>
+                          <><Lock className="w-3.5 h-3.5" /> Unpublished</>
                         )}
                       </span>
                     </td>

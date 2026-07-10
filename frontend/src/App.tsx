@@ -6,6 +6,10 @@ import { ChallengeList } from './pages/ChallengeList.js';
 import { Battle } from './pages/Battle.js';
 import { ChallengeManage } from './pages/admin/ChallengeManage.js';
 import { AdminDashboard } from './pages/admin/AdminDashboard.js';
+import { AdminSubmissionTable } from './pages/admin/AdminSubmissionTable.js';
+import { SubmissionReviewPage } from './pages/admin/SubmissionReviewPage.js';
+import { AdminParticipantManagement } from './pages/admin/AdminParticipantManagement.js';
+import { AdminLayout } from './components/admin/AdminLayout.js';
 import { Leaderboard } from './pages/Leaderboard.js';
 import { Dashboard } from './pages/Dashboard.js';
 
@@ -46,7 +50,7 @@ export default function App() {
           <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-sm shadow-lg shadow-blue-500/20">
             CSS
           </span>
-          Battle
+          WARS
         </Link>
         <nav className="flex items-center gap-1">
           <Link
@@ -93,10 +97,13 @@ export default function App() {
           <Route path="/challenges/:id" element={<Battle />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           {identity.role === 'ADMIN' && (
-            <>
+            <Route element={<AdminLayout />}>
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/challenges" element={<ChallengeManage />} />
-            </>
+              <Route path="/admin/participants" element={<AdminParticipantManagement />} />
+              <Route path="/admin/submissions" element={<AdminSubmissionTable />} />
+              <Route path="/admin/submissions/:id" element={<SubmissionReviewPage />} />
+            </Route>
           )}
           <Route
             path="*"

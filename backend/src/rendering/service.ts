@@ -225,7 +225,7 @@ app.post('/diff', async (req: Request, res: Response): Promise<void> => {
 // ---------------------------------------------------------------------------
 
 app.get('/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok', service: 'cssbattle-rendering' });
+  res.json({ status: 'ok', service: 'csswars-rendering' });
 });
 
 // ---------------------------------------------------------------------------

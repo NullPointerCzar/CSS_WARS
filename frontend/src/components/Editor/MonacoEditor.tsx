@@ -2,7 +2,7 @@ import { useRef, useCallback, useEffect } from 'react';
 import Editor, { type OnMount } from '@monaco-editor/react';
 import { Loader2 } from 'lucide-react';
 
-const STORAGE_PREFIX = 'cssbattle_draft_';
+const STORAGE_PREFIX = 'csswars_draft_';
 
 interface MonacoEditorProps {
   challengeId: string;

@@ -93,6 +93,12 @@ model Submission {
 
   submittedAt DateTime @default(now())
 
+  reviewStatus     String   @default("PENDING") /// PENDING | APPROVED | REJECTED | FLAGGED
+  overrideScore    Decimal? @db.Decimal(5, 2)  /// Manual score override, nullable
+  reviewNotes      String?  @db.Text           /// Admin reviewer notes
+  reviewedAt       DateTime?                   /// Set when a review decision is made
+  flaggedForReview Boolean   @default(false)   /// Flagged for re-review by admin
+
   @@index([challengeId, score])
   @@index([userId, challengeId])
 }

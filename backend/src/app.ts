@@ -80,7 +80,7 @@ export function createApp(): Express {
     const renderStatus = getRenderServiceStatus();
     res.json({
       status: 'ok',
-      service: 'cssbattle-backend',
+      service: 'csswars-backend',
       uptime: process.uptime(),
       renderService: {
         status: renderStatus.status,

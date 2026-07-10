@@ -159,19 +159,16 @@ adminRouter.patch('/competition/round/lock', async (req: Request, res: Response)
 // Submission Review & Rejudge
 // ---------------------------------------------------------------------------
 
-// GET /api/admin/submissions?challengeId= — list all submissions for a challenge
+// GET /api/admin/submissions — list all submissions (optionally filtered by challengeId)
 adminRouter.get('/submissions', async (req: Request, res: Response): Promise<void> => {
   try {
     const challengeId = req.query.challengeId as string | undefined;
 
-    if (!challengeId) {
-      res.status(400).json({ error: 'Missing required query param: challengeId' });
-      return;
-    }
+    const where = challengeId ? { challengeId } : {};
 
     const submissions = await prisma.submission.findMany({
-      where: { challengeId },
-      orderBy: [{ isBest: 'desc' }, { score: 'desc' }],
+      where,
+      orderBy: [{ isBest: 'desc' }, { score: 'desc' }, { submittedAt: 'desc' }],
       select: {
         id: true,
         userId: true,
@@ -182,8 +179,16 @@ adminRouter.get('/submissions', async (req: Request, res: Response): Promise<voi
         screenshotUrl: true,
         isBest: true,
         submittedAt: true,
+        rejudgedAt: true,
+        reviewStatus: true,
+        overrideScore: true,
+        flaggedForReview: true,
+        reviewedAt: true,
         user: {
           select: { name: true, rollNumber: true },
+        },
+        challenge: {
+          select: { id: true, title: true, roundNumber: true },
         },
       },
     });
@@ -192,11 +197,60 @@ adminRouter.get('/submissions', async (req: Request, res: Response): Promise<voi
       submissions.map((s) => ({
         ...s,
         score: s.score ? Number(s.score) : null,
+        overrideScore: s.overrideScore ? Number(s.overrideScore) : null,
       })),
     );
   } catch (err) {
     console.error('Failed to fetch submissions', err);
     res.status(500).json({ error: 'Failed to fetch submissions' });
+  }
+});
+
+// GET /api/admin/submissions/:id — single submission with full details
+adminRouter.get('/submissions/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const submission = await prisma.submission.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        userId: true,
+        htmlCode: true,
+        cssCode: true,
+        codeLength: true,
+        score: true,
+        screenshotUrl: true,
+        isBest: true,
+        submittedAt: true,
+        rejudgedAt: true,
+        reviewStatus: true,
+        overrideScore: true,
+        reviewNotes: true,
+        reviewedAt: true,
+        flaggedForReview: true,
+        user: {
+          select: { id: true, name: true, rollNumber: true },
+        },
+        challenge: {
+          select: { id: true, title: true, description: true, difficulty: true, roundNumber: true, targetImageUrl: true },
+        },
+      },
+    });
+
+    if (!submission) {
+      res.status(404).json({ error: 'Submission not found' });
+      return;
+    }
+
+    res.json({
+      ...submission,
+      score: submission.score ? Number(submission.score) : null,
+      overrideScore: submission.overrideScore ? Number(submission.overrideScore) : null,
+    });
+  } catch (err) {
+    console.error('Failed to fetch submission', err);
+    res.status(500).json({ error: 'Failed to fetch submission' });
   }
 });
 
@@ -314,6 +368,90 @@ adminRouter.post('/submissions/:id/rejudge', async (req: Request, res: Response)
       return;
     }
     res.status(500).json({ error: 'Failed to rejudge submission' });
+  }
+});
+
+// DELETE /api/admin/submissions/:id — delete a submission
+adminRouter.delete('/submissions/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const submission = await prisma.submission.findUnique({ where: { id } });
+    if (!submission) {
+      res.status(404).json({ error: 'Submission not found' });
+      return;
+    }
+
+    await prisma.submission.delete({ where: { id } });
+    res.json({ message: 'Submission deleted successfully' });
+  } catch (err) {
+    console.error('Failed to delete submission', err);
+    res.status(500).json({ error: 'Failed to delete submission' });
+  }
+});
+
+// PATCH /api/admin/submissions/:id/review — update review fields
+adminRouter.patch('/submissions/:id/review', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { reviewStatus, overrideScore, reviewNotes, flaggedForReview } = req.body;
+
+    const validStatuses = ['PENDING', 'APPROVED', 'REJECTED', 'FLAGGED'];
+    if (reviewStatus && !validStatuses.includes(reviewStatus)) {
+      res.status(400).json({ error: `reviewStatus must be one of: ${validStatuses.join(', ')}` });
+      return;
+    }
+
+    const existing = await prisma.submission.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ error: 'Submission not found' });
+      return;
+    }
+
+    const data: Record<string, unknown> = {};
+    if (reviewStatus !== undefined) data.reviewStatus = reviewStatus;
+    if (flaggedForReview !== undefined) data.flaggedForReview = Boolean(flaggedForReview);
+    if (reviewNotes !== undefined) data.reviewNotes = reviewNotes || null;
+    if (overrideScore !== undefined) {
+      if (overrideScore === null || overrideScore === '') {
+        data.overrideScore = null;
+      } else {
+        const num = Number(overrideScore);
+        if (Number.isNaN(num) || num < 0 || num > 100) {
+          res.status(400).json({ error: 'overrideScore must be a number between 0 and 100' });
+          return;
+        }
+        data.overrideScore = num;
+      }
+    }
+
+    // Set reviewedAt when a final decision is made
+    if (reviewStatus && reviewStatus !== 'PENDING') {
+      data.reviewedAt = new Date();
+    } else if (reviewStatus === 'PENDING') {
+      data.reviewedAt = null;
+    }
+
+    const updated = await prisma.submission.update({
+      where: { id },
+      data,
+      select: {
+        id: true,
+        reviewStatus: true,
+        overrideScore: true,
+        reviewNotes: true,
+        reviewedAt: true,
+        flaggedForReview: true,
+      },
+    });
+
+    res.json({
+      ...updated,
+      overrideScore: updated.overrideScore ? Number(updated.overrideScore) : null,
+    });
+  } catch (err) {
+    console.error('Failed to update review', err);
+    res.status(500).json({ error: 'Failed to update review' });
   }
 });
 

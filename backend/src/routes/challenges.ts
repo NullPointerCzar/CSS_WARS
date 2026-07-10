@@ -134,13 +134,12 @@ adminChallengesRouter.get('/', async (_req: Request, res: Response) => {
 
 // ---------------------------------------------------------------------------
 // Admin: POST /api/admin/challenges — create a challenge
-// ---------------------------------------------------------------------------
 adminChallengesRouter.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const { title, description, difficulty, roundNumber, targetImageUrl } = req.body;
 
-    if (!title || !difficulty || roundNumber === undefined || !targetImageUrl) {
-      res.status(400).json({ error: 'Missing required fields: title, difficulty, roundNumber, targetImageUrl' });
+    if (!title || !difficulty || roundNumber === undefined) {
+      res.status(400).json({ error: 'Missing required fields: title, difficulty, roundNumber' });
       return;
     }
 
@@ -149,8 +148,6 @@ adminChallengesRouter.post('/', async (req: Request, res: Response): Promise<voi
       return;
     }
 
-    // The admin must be identified via x-admin-pin; we don't have a user ID in the
-    // header directly. We'll use the first admin user from the DB as "createdBy".
     const adminUser = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
     if (!adminUser) {
       res.status(500).json({ error: 'No admin user found in database' });
@@ -163,7 +160,7 @@ adminChallengesRouter.post('/', async (req: Request, res: Response): Promise<voi
         description: description || null,
         difficulty,
         roundNumber: Number(roundNumber),
-        targetImageUrl,
+        targetImageUrl: targetImageUrl || '/targets/placeholder.png',
         published: false,
         createdBy: adminUser.id,
       },

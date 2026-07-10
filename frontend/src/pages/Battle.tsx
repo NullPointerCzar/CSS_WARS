@@ -41,7 +41,7 @@ const difficultyConfig = {
   HARD: { color: 'text-red-400', bg: 'bg-red-500/10', label: 'Hard' },
 };
 
-const STORAGE_PREFIX = 'cssbattle_draft_';
+const STORAGE_PREFIX = 'csswars_draft_';
 
 function loadDraft(userId: string, challengeId: string): { html: string; css: string } | null {
   try {
