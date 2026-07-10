@@ -1,4 +1,4 @@
-import { Link, Route, Routes } from 'react-router-dom';
+import { Link, Route, Routes, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useIdentity, clearIdentity } from './lib/identity.js';
 import { IdentitySelection } from './pages/IdentitySelection.js';
@@ -36,13 +36,8 @@ function HealthBadge() {
   );
 }
 
-export default function App() {
-  const identity = useIdentity();
-
-  if (!identity) {
-    return <IdentitySelection />;
-  }
-
+/** Dedicated layout for non-admin screens */
+function MainLayout({ identity }: { identity: NonNullable<ReturnType<typeof useIdentity>> }) {
   return (
     <div className="min-h-full bg-slate-950 text-slate-200">
       <header className="border-b border-slate-800 px-6 py-4 flex items-center justify-between bg-slate-900/50 backdrop-blur-sm sticky top-0 z-40">
@@ -96,15 +91,6 @@ export default function App() {
           <Route path="/challenges" element={<ChallengeList />} />
           <Route path="/challenges/:id" element={<Battle />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
-          {identity.role === 'ADMIN' && (
-            <Route element={<AdminLayout />}>
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/admin/challenges" element={<ChallengeManage />} />
-              <Route path="/admin/participants" element={<AdminParticipantManagement />} />
-              <Route path="/admin/submissions" element={<AdminSubmissionTable />} />
-              <Route path="/admin/submissions/:id" element={<SubmissionReviewPage />} />
-            </Route>
-          )}
           <Route
             path="*"
             element={<p className="text-slate-400">Not implemented yet.</p>}
@@ -115,3 +101,30 @@ export default function App() {
   );
 }
 
+export default function App() {
+  const identity = useIdentity();
+  const location = useLocation();
+  const isAdminRoute = identity?.role === 'ADMIN' && location.pathname.startsWith('/admin');
+
+  if (!identity) {
+    return <IdentitySelection />;
+  }
+
+  // Admin routes render in a completely separate <Routes> tree
+  // so the sidebar can never persist onto non-admin screens
+  if (isAdminRoute) {
+    return (
+      <Routes>
+        <Route element={<AdminLayout />}>
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/challenges" element={<ChallengeManage />} />
+          <Route path="/admin/participants" element={<AdminParticipantManagement />} />
+          <Route path="/admin/submissions" element={<AdminSubmissionTable />} />
+          <Route path="/admin/submissions/:id" element={<SubmissionReviewPage />} />
+        </Route>
+      </Routes>
+    );
+  }
+
+  return <MainLayout identity={identity} />;
+}

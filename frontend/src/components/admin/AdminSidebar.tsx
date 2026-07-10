@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Swords,
@@ -6,82 +6,156 @@ import {
   FileText,
   BarChart3,
   Settings,
+  ChevronRight,
+  LogOut,
+  Trophy,
 } from 'lucide-react';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
+  SidebarTrigger,
+  useSidebar,
+} from '@/components/ui/sidebar';
+import { clearIdentity } from '../../lib/identity.js';
 
 const navItems = [
-  { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', end: true },
+  { to: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/admin/challenges', icon: Swords, label: 'Challenges' },
   { to: '/admin/participants', icon: Users, label: 'Participants' },
   { to: '/admin/submissions', icon: FileText, label: 'Submissions' },
-  { to: '/admin/analytics', icon: BarChart3, label: 'Analytics', disabled: true },
-  { to: '/admin/settings', icon: Settings, label: 'Settings', disabled: true },
+  { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
 ];
 
-export function AdminSidebar() {
+const secondaryItems = [
+  { to: '/admin/analytics', icon: BarChart3, label: 'Analytics', soon: true },
+  { to: '/admin/settings', icon: Settings, label: 'Settings', soon: true },
+];
+
+export function AppAdminSidebar() {
+  const { state, toggleSidebar } = useSidebar();
+  const collapsed = state === 'collapsed';
+
   return (
-    <aside className="w-64 shrink-0 bg-slate-900/80 border-r border-slate-800 flex flex-col h-full">
-      {/* Logo area */}
-      <div className="px-5 py-6 border-b border-slate-800/50">
-        <NavLink to="/admin" className="flex items-center gap-2.5">
-          <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-sm shadow-lg shadow-amber-500/20">
-            CSS
-          </span>
-          <div>
-            <span className="text-sm font-bold text-white tracking-tight">Admin</span>
-            <p className="text-[10px] text-slate-500 leading-tight">Control Panel</p>
-          </div>
-        </NavLink>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          if (item.disabled) {
-            return (
-              <div
-                key={item.to}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 cursor-not-allowed select-none"
-                title="Coming soon"
-              >
-                <Icon className="w-4 h-4" />
-                <span className="text-sm font-medium">{item.label}</span>
-                <span className="ml-auto text-[9px] text-slate-700 bg-slate-800/50 px-1.5 py-0.5 rounded-md">
-                  Soon
-                </span>
-              </div>
-            );
-          }
-          return (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                  isActive
-                    ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent'
-                }`
-              }
-            >
-              <Icon className="w-4 h-4" />
-              {item.label}
-            </NavLink>
-          );
-        })}
-      </nav>
-
-      {/* Bottom section */}
-      <div className="px-4 py-4 border-t border-slate-800/50">
-        <NavLink
-          to="/"
-          className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-slate-500 hover:text-slate-300 hover:bg-slate-800/50 transition-colors"
+    <Sidebar collapsible="icon" variant="sidebar">
+      {/* Branding header with collapse toggle */}
+      <SidebarHeader className="flex flex-row items-center gap-2 p-2">
+        <button
+          onClick={() => toggleSidebar()}
+          className="flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 text-white text-sm font-bold shadow-sm shrink-0 hover:brightness-110 transition-all cursor-pointer"
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-slate-600" />
-          Back to main site
-        </NavLink>
-      </div>
-    </aside>
+          C
+        </button>
+        {!collapsed && (
+          <div className="grid flex-1 text-left leading-tight">
+            <span className="truncate font-semibold text-white text-sm">CSS WARS</span>
+            <span className="truncate text-[10px] text-sidebar-foreground/60">
+              Admin Control Panel
+            </span>
+          </div>
+        )}
+        {!collapsed && (
+          <SidebarTrigger className="size-7 p-0 text-sidebar-foreground/40 hover:text-sidebar-foreground" />
+        )}
+      </SidebarHeader>
+
+      {/* Main navigation */}
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Main</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navItems.map((item) => (
+                <NavItem key={item.to} item={item} collapsed={collapsed} />
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Other</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {secondaryItems.map((item) => (
+                <SidebarMenuItem key={item.to}>
+                  <SidebarMenuButton
+                    disabled
+                    className="opacity-50 cursor-not-allowed"
+                    tooltip={`${item.label} (Coming soon)`}
+                  >
+                    <item.icon />
+                    <span>{item.label}</span>
+                    {!collapsed && (
+                      <span className="ml-auto text-[10px] text-sidebar-foreground/40 bg-sidebar-accent/50 px-1.5 py-0.5 rounded-md">
+                        Soon
+                      </span>
+                    )}
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      {/* Footer */}
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={() => {
+                clearIdentity();
+                window.location.href = '/';
+              }}
+              tooltip="Back to main site"
+            >
+              <LogOut className="rotate-180" />
+              <span>Back to site</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+
+      <SidebarRail />
+    </Sidebar>
+  );
+}
+
+function NavItem({
+  item,
+  collapsed,
+}: {
+  item: { to: string; icon: any; label: string };
+  collapsed: boolean;
+}) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const isActive = item.to === '/admin'
+    ? location.pathname === '/admin'
+    : location.pathname.startsWith(item.to);
+
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        isActive={isActive}
+        tooltip={collapsed ? item.label : undefined}
+        onClick={() => navigate(item.to)}
+      >
+        <item.icon />
+        <span>{item.label}</span>
+        {isActive && !collapsed && (
+          <ChevronRight className="ml-auto size-3 text-sidebar-accent-foreground/50" />
+        )}
+      </SidebarMenuButton>
+    </SidebarMenuItem>
   );
 }
