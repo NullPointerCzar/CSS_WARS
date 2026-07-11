@@ -93,6 +93,12 @@ model Submission {
 
   submittedAt DateTime @default(now())
 
+  reviewStatus     String   @default("PENDING") /// PENDING | APPROVED | REJECTED | FLAGGED
+  overrideScore    Decimal? @db.Decimal(5, 2)  /// Manual score override, nullable
+  reviewNotes      String?  @db.Text           /// Admin reviewer notes
+  reviewedAt       DateTime?                   /// Set when a review decision is made
+  flaggedForReview Boolean   @default(false)   /// Flagged for re-review by admin
+
   @@index([challengeId, score])
   @@index([userId, challengeId])
 }
@@ -103,7 +109,8 @@ model CompetitionState {
   id                    String            @id @default(cuid())
   status                CompetitionStatus @default(NOT_STARTED)
   currentRound          Int               @default(1)
-  locked                Boolean           @default(false)           /// true = submissions frozen
+  unlockedRound         Int?                                            /// null = no round unlocked (all locked); 1/2/3 = that round is active
+  locked                Boolean           @default(false)           /// true = submissions frozen globally
   leaderboardFrozen     Boolean           @default(false)           /// Separate toggle for freezing leaderboard visibility
   frozenLeaderboardData Json?                                       /// Snapshot of ranked results created at freeze time
   updatedAt             DateTime          @updatedAt

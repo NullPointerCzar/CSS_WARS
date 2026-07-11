@@ -1,8 +1,8 @@
 {
-  "name": "cssbattle",
+  "name": "csswars",
   "version": "0.1.0",
   "private": true,
-  "description": "CSS Battle Platform — Yatra @ NCE College",
+  "description": "CSS WARS — Yatra @ NCE College",
   "workspaces": [
     "backend",
     "frontend"

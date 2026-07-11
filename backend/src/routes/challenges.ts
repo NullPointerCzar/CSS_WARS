@@ -44,12 +44,20 @@ const upload = multer({
 });
 
 // ---------------------------------------------------------------------------
-// Public: GET /api/challenges — only published
+// Public: GET /api/challenges — only published AND in the unlocked round
 // ---------------------------------------------------------------------------
 challengesRouter.get('/', async (_req: Request, res: Response) => {
   try {
+    const state = await prisma.competitionState.findFirst();
+    const unlockedRound = state?.unlockedRound ?? null;
+
+    const where: Record<string, unknown> = { published: true };
+    if (unlockedRound !== null) {
+      where.roundNumber = unlockedRound;
+    }
+
     const challenges = await prisma.challenge.findMany({
-      where: { published: true },
+      where,
       select: {
         id: true,
         title: true,
@@ -70,14 +78,22 @@ challengesRouter.get('/', async (_req: Request, res: Response) => {
 });
 
 // ---------------------------------------------------------------------------
-// Public: GET /api/challenges/:id — single published challenge
+// Public: GET /api/challenges/:id — single published challenge (must be in unlocked round)
 // ---------------------------------------------------------------------------
 challengesRouter.get('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
+    const state = await prisma.competitionState.findFirst();
+    const unlockedRound = state?.unlockedRound ?? null;
+
+    const where: Record<string, unknown> = { id, published: true };
+    if (unlockedRound !== null) {
+      where.roundNumber = unlockedRound;
+    }
+
     const challenge = await prisma.challenge.findFirst({
-      where: { id, published: true },
+      where,
       select: {
         id: true,
         title: true,
@@ -118,13 +134,12 @@ adminChallengesRouter.get('/', async (_req: Request, res: Response) => {
 
 // ---------------------------------------------------------------------------
 // Admin: POST /api/admin/challenges — create a challenge
-// ---------------------------------------------------------------------------
 adminChallengesRouter.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const { title, description, difficulty, roundNumber, targetImageUrl } = req.body;
 
-    if (!title || !difficulty || roundNumber === undefined || !targetImageUrl) {
-      res.status(400).json({ error: 'Missing required fields: title, difficulty, roundNumber, targetImageUrl' });
+    if (!title || !difficulty || roundNumber === undefined) {
+      res.status(400).json({ error: 'Missing required fields: title, difficulty, roundNumber' });
       return;
     }
 
@@ -133,8 +148,6 @@ adminChallengesRouter.post('/', async (req: Request, res: Response): Promise<voi
       return;
     }
 
-    // The admin must be identified via x-admin-pin; we don't have a user ID in the
-    // header directly. We'll use the first admin user from the DB as "createdBy".
     const adminUser = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
     if (!adminUser) {
       res.status(500).json({ error: 'No admin user found in database' });
@@ -147,7 +160,7 @@ adminChallengesRouter.post('/', async (req: Request, res: Response): Promise<voi
         description: description || null,
         difficulty,
         roundNumber: Number(roundNumber),
-        targetImageUrl,
+        targetImageUrl: targetImageUrl || '/targets/placeholder.png',
         published: false,
         createdBy: adminUser.id,
       },

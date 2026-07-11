@@ -1,4 +1,4 @@
-import { Link, Route, Routes } from 'react-router-dom';
+import { Link, Route, Routes, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useIdentity, clearIdentity } from './lib/identity.js';
 import { IdentitySelection } from './pages/IdentitySelection.js';
@@ -6,6 +6,10 @@ import { ChallengeList } from './pages/ChallengeList.js';
 import { Battle } from './pages/Battle.js';
 import { ChallengeManage } from './pages/admin/ChallengeManage.js';
 import { AdminDashboard } from './pages/admin/AdminDashboard.js';
+import { AdminSubmissionTable } from './pages/admin/AdminSubmissionTable.js';
+import { SubmissionReviewPage } from './pages/admin/SubmissionReviewPage.js';
+import { AdminParticipantManagement } from './pages/admin/AdminParticipantManagement.js';
+import { AdminLayout } from './components/admin/AdminLayout.js';
 import { Leaderboard } from './pages/Leaderboard.js';
 import { Dashboard } from './pages/Dashboard.js';
 
@@ -32,13 +36,8 @@ function HealthBadge() {
   );
 }
 
-export default function App() {
-  const identity = useIdentity();
-
-  if (!identity) {
-    return <IdentitySelection />;
-  }
-
+/** Dedicated layout for non-admin screens */
+function MainLayout({ identity }: { identity: NonNullable<ReturnType<typeof useIdentity>> }) {
   return (
     <div className="min-h-full bg-slate-950 text-slate-200">
       <header className="border-b border-slate-800 px-6 py-4 flex items-center justify-between bg-slate-900/50 backdrop-blur-sm sticky top-0 z-40">
@@ -46,7 +45,7 @@ export default function App() {
           <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-sm shadow-lg shadow-blue-500/20">
             CSS
           </span>
-          Battle
+          WARS
         </Link>
         <nav className="flex items-center gap-1">
           <Link
@@ -92,12 +91,6 @@ export default function App() {
           <Route path="/challenges" element={<ChallengeList />} />
           <Route path="/challenges/:id" element={<Battle />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
-          {identity.role === 'ADMIN' && (
-            <>
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/admin/challenges" element={<ChallengeManage />} />
-            </>
-          )}
           <Route
             path="*"
             element={<p className="text-slate-400">Not implemented yet.</p>}
@@ -108,3 +101,30 @@ export default function App() {
   );
 }
 
+export default function App() {
+  const identity = useIdentity();
+  const location = useLocation();
+  const isAdminRoute = identity?.role === 'ADMIN' && location.pathname.startsWith('/admin');
+
+  if (!identity) {
+    return <IdentitySelection />;
+  }
+
+  // Admin routes render in a completely separate <Routes> tree
+  // so the sidebar can never persist onto non-admin screens
+  if (isAdminRoute) {
+    return (
+      <Routes>
+        <Route element={<AdminLayout />}>
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/challenges" element={<ChallengeManage />} />
+          <Route path="/admin/participants" element={<AdminParticipantManagement />} />
+          <Route path="/admin/submissions" element={<AdminSubmissionTable />} />
+          <Route path="/admin/submissions/:id" element={<SubmissionReviewPage />} />
+        </Route>
+      </Routes>
+    );
+  }
+
+  return <MainLayout identity={identity} />;
+}

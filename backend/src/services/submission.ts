@@ -133,7 +133,7 @@ export async function processSubmission(
 
   const challenge = await prisma.challenge.findUnique({
     where: { id: input.challengeId },
-    select: { published: true, targetImageUrl: true },
+    select: { published: true, targetImageUrl: true, roundNumber: true },
   });
 
   if (!challenge) {
@@ -142,6 +142,15 @@ export async function processSubmission(
 
   if (!challenge.published) {
     throw new Error('Challenge is not published yet');
+  }
+
+  const unlockedRound = competitionState?.unlockedRound ?? null;
+  if (unlockedRound === null) {
+    throw new Error('No round is currently unlocked — submissions are not open for any round');
+  }
+
+  if (challenge.roundNumber !== unlockedRound) {
+    throw new Error(`Submissions are only open for round ${unlockedRound}. This challenge belongs to round ${challenge.roundNumber}`);
   }
 
   if (!challenge.targetImageUrl) {
@@ -159,13 +168,27 @@ export async function processSubmission(
     );
   }
 
-  // 2. Validate payload
+  // 2. Check for existing submission — strictly one submission per challenge per user
+  const existingSubmission = await prisma.submission.findFirst({
+    where: {
+      userId: input.userId,
+      challengeId: input.challengeId,
+    },
+  });
+
+  if (existingSubmission) {
+    throw new Error(
+      'You have already submitted to this challenge. Resubmissions are not allowed.',
+    );
+  }
+
+  // 3. Validate payload
   const validation = validatePayload(input.htmlCode, input.cssCode);
   if (!validation.valid) {
     throw new Error(validation.error);
   }
 
-  // 3. Sanitize (defense in depth — runs again in the rendering service too)
+  // 4. Sanitize (defense in depth — runs again in the rendering service too)
   let sanitizedHtml: string;
   let sanitizedCss: string;
   try {
@@ -179,10 +202,10 @@ export async function processSubmission(
   // Calculate code length
   const codeLength = Buffer.byteLength(sanitizedHtml + sanitizedCss, 'utf8');
 
-  // 4. Check render service availability BEFORE creating a DB record
+  // 5. Check render service availability BEFORE creating a DB record
   checkRenderServiceAvailable();
 
-  // 5. Create initial DB record (score null until rendering completes)
+  // 6. Create initial DB record (score null until rendering completes)
   const submission = await prisma.submission.create({
     data: {
       userId: input.userId,
@@ -196,7 +219,7 @@ export async function processSubmission(
     },
   });
 
-  // 6. Call the rendering service
+  // 7. Call the rendering service
   let renderResult: RenderServiceResponse;
   try {
     const res = await fetch(`${RENDER_SERVICE_URL}/render`, {
@@ -243,7 +266,7 @@ export async function processSubmission(
     }
   }
 
-  // 7. Update DB record with render results
+  // 8. Update DB record with render results
   const updateData: {
     score?: number;
     screenshotUrl?: string;
@@ -263,7 +286,7 @@ export async function processSubmission(
     });
   }
 
-  // 8. In a Prisma transaction: fetch, compute best, and update atomically
+  // 9. In a Prisma transaction: fetch, compute best, and update atomically
   //    This prevents race conditions from rapid double-submission where two
   //    requests could read stale data and both choose the same best submission.
   let bestId: string | null = null;
@@ -313,7 +336,7 @@ export async function processSubmission(
     }
   });
 
-  // 9. Compute rank and return the result
+  // 10. Compute rank and return the result
   const rank = await computeRank(input.userId, input.challengeId);
 
   return {

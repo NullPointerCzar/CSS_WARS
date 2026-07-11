@@ -1,5 +1,5 @@
 /**
- * Tie-break logic for the CSS Battle leaderboard.
+ * Tie-break logic for the CSS WARS leaderboard.
  *
  * Rules (from project plan Section 8):
  * 1. Highest score wins

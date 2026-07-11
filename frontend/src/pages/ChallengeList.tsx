@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Circle,
   CheckCircle2,
+  Lock,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useIdentity } from '../lib/identity.js';
@@ -48,6 +49,19 @@ export function ChallengeList() {
       return res.json();
     },
   });
+
+  const { data: competitionState } = useQuery<{ unlockedRound: number | null; locked: boolean }>({
+    queryKey: ['competition-state'],
+    queryFn: async () => {
+      const res = await fetch('/api/competition/state');
+      if (!res.ok) throw new Error('Failed to fetch competition state');
+      return res.json();
+    },
+    staleTime: 10_000,
+  });
+
+  const unlockedRound = competitionState?.unlockedRound ?? null;
+  const globallyLocked = competitionState?.locked ?? true;
 
   // Fetch submission status for each challenge for the current user
   const challengeIds = challenges.map((c) => c.id);
@@ -109,6 +123,7 @@ export function ChallengeList() {
       ) : (
         <div className="grid gap-4">
           {challenges.map((challenge, i) => {
+            const isLocked = !unlockedRound || challenge.roundNumber !== unlockedRound || globallyLocked;
             const status = submissionsMap[challenge.id];
             return (
               <motion.button
@@ -116,8 +131,14 @@ export function ChallengeList() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
-                onClick={() => navigate(`/challenges/${challenge.id}`)}
-                className="w-full text-left group bg-slate-900/50 hover:bg-slate-900/80 border border-slate-800 hover:border-slate-700 rounded-2xl p-6 transition-all duration-200 shadow-xl"
+                onClick={() => {
+                  if (!isLocked) {
+                    navigate(`/challenges/${challenge.id}`);
+                  }
+                }}
+                className={`w-full text-left group bg-slate-900/50 hover:bg-slate-900/80 border border-slate-800 hover:border-slate-700 rounded-2xl p-6 transition-all duration-200 shadow-xl ${
+                  isLocked ? 'opacity-75' : ''
+                }`}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
@@ -126,7 +147,13 @@ export function ChallengeList() {
                         Round {challenge.roundNumber}
                       </span>
                       <DifficultyBadge difficulty={challenge.difficulty} />
-                      {status?.hasSubmitted && (
+                      {isLocked && (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-400 bg-slate-500/10 px-2.5 py-1 rounded-lg">
+                          <Lock className="w-3.5 h-3.5" />
+                          {globallyLocked ? 'Submissions Closed' : 'Round Locked'}
+                        </span>
+                      )}
+                      {!isLocked && status?.hasSubmitted && (
                         <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg">
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           {status.bestScore !== null ? `${status.bestScore}%` : 'Submitted'}
@@ -141,7 +168,7 @@ export function ChallengeList() {
                     )}
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
-                    <ChevronRight className="w-5 h-5 text-slate-600 group-hover:text-amber-400 transition-colors" />
+                    <ChevronRight className={`w-5 h-5 text-slate-600 group-hover:text-amber-400 transition-colors ${isLocked ? 'opacity-50' : ''}`} />
                   </div>
                 </div>
               </motion.button>

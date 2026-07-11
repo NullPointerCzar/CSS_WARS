@@ -1,8 +1,8 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, type ReactNode, type FormEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { getAdminPin, setAdminPin } from '../../lib/config.js';
+import { apiGet, apiPatch } from '../../lib/api.js';
 import {
   Play,
   Pause,
@@ -15,14 +15,12 @@ import {
   Loader2,
   AlertCircle,
   ChevronRight,
-  ChevronDown,
-  FileCode2,
-  RotateCw,
   Eye,
-  ArrowUpCircle,
-  ShieldCheck,
+  Target,
+  FileText,
+  Users,
 } from 'lucide-react';
-import { AdminParticipantManagement } from './AdminParticipantManagement.js';
+import { AdminParticipantManagementInline } from './AdminParticipantManagement.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -32,30 +30,38 @@ interface CompetitionState {
   locked: boolean;
   status: string;
   currentRound: number;
+  unlockedRound: number | null;
   leaderboardFrozen: boolean;
 }
 
-interface Challenge {
-  id: string;
-  title: string;
-  roundNumber: number;
-}
+// ---------------------------------------------------------------------------
+// Stats card
+// ---------------------------------------------------------------------------
 
-interface AdminSubmission {
-  id: string;
-  userId: string;
-  htmlCode: string;
-  cssCode: string;
-  codeLength: number;
-  score: number | null;
-  screenshotUrl: string | null;
-  isBest: boolean;
-  submittedAt: string;
-  rejudgedAt?: string;
-  user: {
-    name: string;
-    rollNumber: string | null;
-  };
+function StatCard({
+  icon,
+  label,
+  value,
+  color,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string | number;
+  color: string;
+}) {
+  return (
+    <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4">
+      <div className="flex items-center gap-3">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${color}`}>
+          {icon}
+        </div>
+        <div>
+          <p className="text-2xl font-bold text-white">{value}</p>
+          <p className="text-xs text-slate-400">{label}</p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -139,10 +145,10 @@ function SectionCard({
   description,
   children,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   title: string;
   description?: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 shadow-xl">
@@ -176,13 +182,7 @@ function CompetitionControls({
 
   const statusMutation = useMutation({
     mutationFn: async (status: string) => {
-      const res = await fetch('/api/admin/competition/status', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'x-admin-pin': getAdminPin()! },
-        body: JSON.stringify({ status }),
-      });
-      if (!res.ok) throw new Error((await res.json()).error || 'Failed');
-      return res.json();
+      return apiPatch('/api/admin/competition/status', { status });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['competition-state'] });
@@ -192,13 +192,7 @@ function CompetitionControls({
 
   const lockMutation = useMutation({
     mutationFn: async (locked: boolean) => {
-      const res = await fetch('/api/admin/competition/lock', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'x-admin-pin': getAdminPin()! },
-        body: JSON.stringify({ locked }),
-      });
-      if (!res.ok) throw new Error((await res.json()).error || 'Failed');
-      return res.json();
+      return apiPatch('/api/admin/competition/lock', { locked });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['competition-state'] });
@@ -207,14 +201,8 @@ function CompetitionControls({
   });
 
   const roundMutation = useMutation({
-    mutationFn: async (round: number) => {
-      const res = await fetch('/api/admin/competition/round', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'x-admin-pin': getAdminPin()! },
-        body: JSON.stringify({ currentRound: round }),
-      });
-      if (!res.ok) throw new Error((await res.json()).error || 'Failed');
-      return res.json();
+    mutationFn: async (round: number | null) => {
+      return apiPatch('/api/admin/competition/round/unlock', { round });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['competition-state'] });
@@ -222,14 +210,15 @@ function CompetitionControls({
     },
   });
 
-  const handleAction = useCallback((type: string, payload?: any) => {
-    const destructiveActions = ['ENDED'];
-    if (destructiveActions.includes(payload?.status ?? type)) {
-      setConfirmAction({ type, payload });
-      return;
-    }
-    executeAction(type, payload);
-  }, []);
+  const lockAllRoundsMutation = useMutation({
+    mutationFn: async () => {
+      return apiPatch('/api/admin/competition/round/lock');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['competition-state'] });
+      onRefresh();
+    },
+  });
 
   const executeAction = useCallback((type: string, payload?: any) => {
     switch (type) {
@@ -242,9 +231,21 @@ function CompetitionControls({
       case 'round':
         roundMutation.mutate(payload.round);
         break;
+      case 'lock-all-rounds':
+        lockAllRoundsMutation.mutate();
+        break;
     }
     setConfirmAction(null);
-  }, [statusMutation, lockMutation, roundMutation]);
+  }, [statusMutation, lockMutation, roundMutation, lockAllRoundsMutation]);
+
+  const handleAction = useCallback((type: string, payload?: any) => {
+    const destructiveActions = ['ENDED', 'lock-all-rounds'];
+    if (destructiveActions.includes(payload?.type ?? type)) {
+      setConfirmAction({ type, payload });
+      return;
+    }
+    executeAction(type, payload);
+  }, [executeAction]);
 
   const statusLabels: Record<string, string> = {
     NOT_STARTED: 'Not Started',
@@ -355,44 +356,74 @@ function CompetitionControls({
           </button>
         </div>
 
-        {/* Round control */}
-        <div className="flex items-center justify-between py-3 px-4 bg-slate-950/50 rounded-xl border border-slate-800/50">
-          <div className="flex items-center gap-3">
-            <ArrowUpCircle className="w-4 h-4 text-blue-400" />
-            <div>
-              <p className="text-sm font-medium text-white">Current Round</p>
-              <p className="text-xs text-slate-500">Round {state?.currentRound ?? 1}</p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => handleAction('round', { round: (state?.currentRound ?? 1) - 1 })}
-              disabled={isPending || (state?.currentRound ?? 1) <= 1}
-              className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors disabled:opacity-30"
-            >
-              −
-            </button>
-            <button
-              onClick={() => handleAction('round', { round: (state?.currentRound ?? 1) + 1 })}
-              disabled={isPending}
-              className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors disabled:opacity-30"
-            >
-              +
-            </button>
-          </div>
-        </div>
+         {/* Round control */}
+         <div className="bg-slate-950/50 rounded-xl border border-slate-800/50 p-4">
+           <div className="flex items-center gap-3 mb-4">
+             <Target className="w-4 h-4 text-blue-400" />
+             <div>
+               <p className="text-sm font-medium text-white">Rounds</p>
+               <p className="text-xs text-slate-500">
+                 {state?.unlockedRound
+                   ? `Round ${state.unlockedRound} is currently unlocked`
+                   : 'No round is currently unlocked'}
+               </p>
+             </div>
+           </div>
+           <div className="flex flex-wrap gap-2">
+             {[1, 2, 3].map((round) => (
+               <button
+                 key={round}
+                 onClick={() => {
+                   if (state?.unlockedRound === round) {
+                     setConfirmAction({ type: 'lock-all-rounds', payload: {} });
+                   } else {
+                     executeAction('round', { round });
+                   }
+                 }}
+                 disabled={isPending}
+                 className={`px-4 py-2 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${
+                   state?.unlockedRound === round
+                     ? 'bg-blue-600/20 text-blue-400 hover:bg-blue-600/30'
+                     : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                 }`}
+               >
+                 Round {round} {state?.unlockedRound === round ? '(Active)' : 'Locked'}
+               </button>
+             ))}
+           </div>
+         </div>
       </SectionCard>
 
       <ConfirmDialog
         open={confirmAction !== null}
-        title={confirmAction?.type === 'lock' ? 'Lock Submissions' : 'End Competition'}
+        title={
+          confirmAction?.type === 'lock'
+            ? 'Lock Submissions'
+            : confirmAction?.type === 'lock-all-rounds'
+              ? 'Lock All Rounds'
+              : 'End Competition'
+        }
         message={
           confirmAction?.type === 'lock'
             ? 'This will prevent all participants from submitting new solutions. Are you sure?'
-            : 'This will mark the competition as ended. No further submissions or changes will be possible for participants. Are you sure?'
+            : confirmAction?.type === 'lock-all-rounds'
+              ? 'This will lock the currently unlocked round. Participants will not be able to submit to any round. Are you sure?'
+              : 'This will mark the competition as ended. No further submissions or changes will be possible for participants. Are you sure?'
         }
-        confirmLabel={confirmAction?.type === 'lock' ? 'Lock Submissions' : 'End Competition'}
-        variant={confirmAction?.type === 'lock' ? 'warning' : 'danger'}
+        confirmLabel={
+          confirmAction?.type === 'lock'
+            ? 'Lock Submissions'
+            : confirmAction?.type === 'lock-all-rounds'
+              ? 'Lock Round'
+              : 'End Competition'
+        }
+        variant={
+          confirmAction?.type === 'lock'
+            ? 'warning'
+            : confirmAction?.type === 'lock-all-rounds'
+              ? 'danger'
+              : 'danger'
+        }
         onConfirm={() => {
           if (confirmAction) {
             executeAction(confirmAction.type, confirmAction.payload);
@@ -420,12 +451,7 @@ function LeaderboardControls({
 
   const freezeMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch('/api/admin/leaderboard/freeze', {
-        method: 'PATCH',
-        headers: { 'x-admin-pin': getAdminPin()! },
-      });
-      if (!res.ok) throw new Error((await res.json()).error || 'Failed');
-      return res.json();
+      return apiPatch('/api/admin/leaderboard/freeze');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['competition-state'] });
@@ -436,15 +462,16 @@ function LeaderboardControls({
 
   const handleExport = async () => {
     try {
+      const identity = (await import('../../lib/identity.js')).getIdentity();
       const res = await fetch('/api/admin/leaderboard/export', {
-        headers: { 'x-admin-pin': getAdminPin()! },
+        headers: { 'x-user-id': identity?.id ?? '' },
       });
       if (!res.ok) throw new Error('Export failed');
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `cssbattle-leaderboard-${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = `csswars-leaderboard-${new Date().toISOString().split('T')[0]}.csv`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err: any) {
@@ -520,281 +547,60 @@ function LeaderboardControls({
 }
 
 // ---------------------------------------------------------------------------
-// Submission Review Section
+// Quick Nav Cards
 // ---------------------------------------------------------------------------
 
-function SubmissionReview() {
-  const [selectedChallengeId, setSelectedChallengeId] = useState<string | null>(null);
-  const [expandedSubmissionId, setExpandedSubmissionId] = useState<string | null>(null);
-  const [rejudgeError, setRejudgeError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-
-  // Fetch challenges
-  const { data: challenges = [] } = useQuery<Challenge[]>({
-    queryKey: ['admin-all-challenges'],
-    queryFn: async () => {
-      const res = await fetch('/api/admin/challenges', {
-        headers: { 'x-admin-pin': getAdminPin()! },
-      });
-      if (!res.ok) throw new Error('Failed to fetch challenges');
-      return res.json();
-    },
-  });
-
-  // Auto-select first challenge
-  useEffect(() => {
-    if (!selectedChallengeId && challenges.length > 0) {
-      setSelectedChallengeId(challenges[0].id);
-    }
-  }, [selectedChallengeId, challenges]);
-
-  const selectedChallenge = challenges.find((c) => c.id === selectedChallengeId);
-
-  // Fetch submissions
-  const {
-    data: submissions = [],
-    isLoading,
-    isError,
-    refetch,
-  } = useQuery<AdminSubmission[]>({
-    queryKey: ['admin-submissions', selectedChallengeId],
-    queryFn: async () => {
-      if (!selectedChallengeId) return [];
-      const res = await fetch(`/api/admin/submissions?challengeId=${selectedChallengeId}`, {
-        headers: { 'x-admin-pin': getAdminPin()! },
-      });
-      if (!res.ok) throw new Error('Failed to fetch submissions');
-      return res.json();
-    },
-    enabled: !!selectedChallengeId,
-  });
-
-  // Rejudge mutation
-  const rejudgeMutation = useMutation({
-    mutationFn: async (submissionId: string) => {
-      const res = await fetch(`/api/admin/submissions/${submissionId}/rejudge`, {
-        method: 'POST',
-        headers: { 'x-admin-pin': getAdminPin()! },
-      });
-      if (!res.ok) throw new Error((await res.json()).error || 'Rejudge failed');
-      return res.json();
-    },
-    onSuccess: () => {
-      refetch();
-      setRejudgeError(null);
-    },
-    onError: (err: Error) => setRejudgeError(err.message),
-  });
-
-  // Filter submissions by search query
-  const filteredSubmissions = searchQuery
-    ? submissions.filter(
-        (s) =>
-          s.user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          s.user.rollNumber?.toLowerCase().includes(searchQuery.toLowerCase()),
-      )
-    : submissions;
-
-  const toggleExpand = (id: string) => {
-    setExpandedSubmissionId(expandedSubmissionId === id ? null : id);
-  };
-
+function QuickNavCards() {
   return (
-    <SectionCard
-      icon={<FileCode2 className="w-4 h-4 text-purple-400" />}
-      title="Submission Review"
-      description="View, inspect, and rejudge participant submissions"
-    >
-      {/* Challenge selector + search */}
-      <div className="flex items-center gap-3 mb-4">
-        <div className="relative flex-1">
-          <select
-            value={selectedChallengeId ?? ''}
-            onChange={(e) => setSelectedChallengeId(e.target.value)}
-            className="appearance-none w-full bg-slate-950/50 border border-slate-800 text-white text-sm rounded-xl px-4 py-2.5 pr-10 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 cursor-pointer"
-          >
-            {challenges.map((c) => (
-              <option key={c.id} value={c.id}>
-                Round {c.roundNumber} — {c.title}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-        </div>
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search by name..."
-          className="bg-slate-950/50 border border-slate-800 text-white text-sm rounded-xl px-4 py-2.5 w-48 focus:outline-none focus:ring-2 focus:ring-purple-500/50 placeholder-slate-600"
-        />
-      </div>
-
-      {/* Error */}
-      <AnimatePresence>
-        {rejudgeError && (
-          <motion.div
-            initial={{ opacity: 0, y: -5 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="mb-4 bg-red-500/10 text-red-400 text-sm p-3 rounded-xl border border-red-500/20"
-          >
-            {rejudgeError}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Loading */}
-      {isLoading && (
-        <div className="flex items-center justify-center py-12 text-slate-500">
-          <Loader2 className="w-6 h-6 animate-spin" />
-        </div>
-      )}
-
-      {/* Error */}
-      {isError && (
-        <div className="flex items-center justify-center py-12 text-red-400">
-          <AlertCircle className="w-5 h-5 mr-2" />
-          <span className="text-sm">Failed to load submissions</span>
-        </div>
-      )}
-
-      {/* Empty */}
-      {!isLoading && !isError && filteredSubmissions.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-12 text-slate-500">
-          <FileCode2 className="w-8 h-8 mb-2 opacity-30" />
-          <p className="text-sm">No submissions yet</p>
-          {!selectedChallenge && <p className="text-xs mt-1">Select a challenge to view submissions</p>}
-        </div>
-      )}
-
-      {/* Submissions list */}
-      {!isLoading && !isError && filteredSubmissions.length > 0 && (
-        <div className="space-y-2">
-          <div className="text-xs text-slate-500 mb-2">
-            {filteredSubmissions.length} submission{filteredSubmissions.length !== 1 ? 's' : ''}
+    <div className="space-y-3">
+      <Link
+        to="/admin/challenges"
+        className="flex items-center justify-between w-full px-4 py-3.5 rounded-xl bg-slate-900/50 border border-slate-800 hover:bg-slate-800/50 transition-all group"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center">
+            <Swords className="w-4 h-4 text-amber-400" />
           </div>
-          {filteredSubmissions.map((sub) => (
-            <div
-              key={sub.id}
-              className="bg-slate-950/50 border border-slate-800/50 rounded-xl overflow-hidden transition-all"
-            >
-              {/* Summary row */}
-              <button
-                onClick={() => toggleExpand(sub.id)}
-                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-800/30 transition-colors text-left"
-              >
-                <ChevronRight
-                  className={`w-4 h-4 text-slate-500 transition-transform ${
-                    expandedSubmissionId === sub.id ? 'rotate-90' : ''
-                  }`}
-                />
-                <div className="flex-1 min-w-0">
-                  <span className="text-sm font-medium text-white">{sub.user.name}</span>
-                  {sub.user.rollNumber && (
-                    <span className="text-xs text-slate-500 ml-2">{sub.user.rollNumber}</span>
-                  )}
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  {/* Score */}
-                  {sub.score !== null ? (
-                    <span className={`font-mono text-sm font-bold ${
-                      sub.score >= 90 ? 'text-emerald-400' :
-                      sub.score >= 75 ? 'text-blue-400' :
-                      sub.score >= 50 ? 'text-amber-400' :
-                      'text-red-400'
-                    }`}>
-                      {sub.score.toFixed(1)}
-                    </span>
-                  ) : (
-                    <span className="text-xs text-slate-600">—</span>
-                  )}
-                  {sub.isBest && (
-                    <span className="text-[10px] font-medium text-emerald-500 bg-emerald-500/15 px-1.5 py-0.5 rounded-md">
-                      BEST
-                    </span>
-                  )}
-                  {sub.rejudgedAt && (
-                    <RotateCw className="w-3.5 h-3.5 text-amber-500" />
-                  )}
-                  <span className="text-xs text-slate-500 font-mono">
-                    {sub.codeLength.toLocaleString()} B
-                  </span>
-                </div>
-              </button>
-
-              {/* Expanded details */}
-              <AnimatePresence>
-                {expandedSubmissionId === sub.id && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="border-t border-slate-800/50"
-                  >
-                    <div className="p-4 space-y-4">
-                      {/* Code display */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1.5">HTML</p>
-                          <pre className="text-xs text-slate-300 bg-slate-950 rounded-lg p-3 overflow-x-auto max-h-40 border border-slate-800/50 font-mono">
-                            {sub.htmlCode || '<empty>'}
-                          </pre>
-                        </div>
-                        <div>
-                          <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1.5">CSS</p>
-                          <pre className="text-xs text-slate-300 bg-slate-950 rounded-lg p-3 overflow-x-auto max-h-40 border border-slate-800/50 font-mono">
-                            {sub.cssCode || '<empty>'}
-                          </pre>
-                        </div>
-                      </div>
-
-                      {/* Screenshot */}
-                      {sub.screenshotUrl && (
-                        <div>
-                          <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1.5">Screenshot</p>
-                          <div className="bg-white rounded-lg overflow-hidden border border-slate-800/50 inline-block max-h-32">
-                            <img
-                              src={sub.screenshotUrl}
-                              alt="Submission screenshot"
-                              className="h-28 object-contain"
-                            />
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Actions */}
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => rejudgeMutation.mutate(sub.id)}
-                          disabled={rejudgeMutation.isPending}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 text-xs font-medium transition-colors disabled:opacity-50"
-                        >
-                          {rejudgeMutation.isPending ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <RotateCw className="w-3.5 h-3.5" />
-                          )}
-                          Rejudge
-                        </button>
-                        <span className="text-[10px] text-slate-600">
-                          Submitted {new Date(sub.submittedAt).toLocaleString()}
-                        </span>
-                        {sub.rejudgedAt && (
-                          <span className="text-[10px] text-amber-600">
-                            · Rejudged {new Date(sub.rejudgedAt).toLocaleString()}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          ))}
+          <div>
+            <p className="text-sm font-medium text-white">Challenges</p>
+            <p className="text-xs text-slate-500">Create, edit, and manage CSS challenges</p>
+          </div>
         </div>
-      )}
-    </SectionCard>
+        <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-amber-400 transition-colors" />
+      </Link>
+
+      <Link
+        to="/admin/submissions"
+        className="flex items-center justify-between w-full px-4 py-3.5 rounded-xl bg-slate-900/50 border border-slate-800 hover:bg-slate-800/50 transition-all group"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-purple-500/10 flex items-center justify-center">
+            <FileText className="w-4 h-4 text-purple-400" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-white">Submissions</p>
+            <p className="text-xs text-slate-500">Review, rejudge, and manage submissions</p>
+          </div>
+        </div>
+        <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-purple-400 transition-colors" />
+      </Link>
+
+      <Link
+        to="/admin/participants"
+        className="flex items-center justify-between w-full px-4 py-3.5 rounded-xl bg-slate-900/50 border border-slate-800 hover:bg-slate-800/50 transition-all group"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+            <Users className="w-4 h-4 text-emerald-400" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-white">Participants</p>
+            <p className="text-xs text-slate-500">Add, edit, and manage participants</p>
+          </div>
+        </div>
+        <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-emerald-400 transition-colors" />
+      </Link>
+    </div>
   );
 }
 
@@ -802,99 +608,7 @@ function SubmissionReview() {
 // Admin Dashboard — Main Page
 // ---------------------------------------------------------------------------
 
-function AdminPinPrompt({ onPinSet }: { onPinSet: () => void }) {
-  const [pin, setPin] = useState('');
-  const [error, setError] = useState<string | null>(null);
-
-  // Auto-check PIN against backend on entry
-  const [isChecking, setIsChecking] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setIsChecking(true);
-
-    try {
-      // Verify PIN by calling a read-only admin endpoint
-      const res = await fetch('/api/admin/challenges', {
-        headers: { 'x-admin-pin': pin },
-      });
-
-      if (res.status === 401 || res.status === 403) {
-        throw new Error('Incorrect admin PIN');
-      }
-
-      // PIN is valid — store it
-      setAdminPin(pin);
-      onPinSet();
-    } catch (err: any) {
-      setError(err.message || 'Failed to verify PIN');
-    } finally {
-      setIsChecking(false);
-    }
-  };
-
-  return (
-    <div className="max-w-md mx-auto mt-24">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-slate-900/50 border border-slate-800 rounded-2xl p-8 shadow-xl text-center"
-      >
-        <div className="w-14 h-14 rounded-2xl bg-amber-500/10 mx-auto flex items-center justify-center mb-4">
-          <ShieldCheck className="w-7 h-7 text-amber-400" />
-        </div>
-        <h2 className="text-xl font-bold text-white mb-2">Admin Authentication</h2>
-        <p className="text-sm text-slate-400 mb-6">
-          Enter the shared admin PIN to access the control panel.
-        </p>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="password"
-            value={pin}
-            onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-            placeholder="Enter admin PIN"
-            className="w-full text-center text-2xl tracking-[0.5em] bg-slate-950/50 border border-slate-800 text-white rounded-xl py-4 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all font-mono"
-            maxLength={4}
-            autoFocus
-            required
-          />
-
-          {error && (
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-sm text-red-400"
-            >
-              {error}
-            </motion.p>
-          )}
-
-          <button
-            type="submit"
-            disabled={isChecking || pin.length < 4}
-            className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 px-4 rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
-          >
-            {isChecking ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              'Unlock Dashboard'
-            )}
-          </button>
-        </form>
-      </motion.div>
-    </div>
-  );
-}
-
 export function AdminDashboard() {
-  const [pinVerified, setPinVerified] = useState(!!getAdminPin());
-
-  if (!pinVerified) {
-    return <AdminPinPrompt onPinSet={() => setPinVerified(true)} />;
-  }
-
   const {
     data: state,
     isLoading,
@@ -903,11 +617,27 @@ export function AdminDashboard() {
   } = useQuery<CompetitionState>({
     queryKey: ['competition-state'],
     queryFn: async () => {
-      const res = await fetch('/api/competition/state');
-      if (!res.ok) throw new Error('Failed to fetch competition state');
-      return res.json();
+      return apiGet('/api/competition/state');
     },
     refetchInterval: 10_000,
+  });
+
+  // Fetch stats
+  const { data: stats } = useQuery({
+    queryKey: ['admin-stats'],
+    queryFn: async () => {
+      const [submissions, challenges, participants] = await Promise.all([
+        apiGet<any[]>('/api/admin/submissions'),
+        apiGet<any[]>('/api/admin/challenges'),
+        fetch('/api/participants').then((r) => r.json()),
+      ]);
+      return {
+        totalSubmissions: submissions.length,
+        totalChallenges: challenges.length,
+        totalParticipants: participants.filter((p: any) => p.role !== 'ADMIN').length,
+      };
+    },
+    staleTime: 10_000,
   });
 
   if (isLoading) {
@@ -937,16 +667,31 @@ export function AdminDashboard() {
   return (
     <div className="max-w-5xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
-            <Swords className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-white tracking-tight">Admin Dashboard</h1>
-            <p className="text-slate-400 mt-1">Control panel for competition management</p>
-          </div>
-        </div>
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-white tracking-tight">Dashboard</h1>
+        <p className="text-slate-400 mt-1 text-sm">Overview and quick controls for the competition</p>
+      </div>
+
+      {/* Stats row */}
+      <div className="grid grid-cols-3 gap-4 mb-8">
+        <StatCard
+          icon={<Swords className="w-5 h-5 text-amber-400" />}
+          label="Challenges"
+          value={stats?.totalChallenges ?? '—'}
+          color="bg-amber-500/10"
+        />
+        <StatCard
+          icon={<Users className="w-5 h-5 text-emerald-400" />}
+          label="Participants"
+          value={stats?.totalParticipants ?? '—'}
+          color="bg-emerald-500/10"
+        />
+        <StatCard
+          icon={<FileText className="w-5 h-5 text-purple-400" />}
+          label="Submissions"
+          value={stats?.totalSubmissions ?? '—'}
+          color="bg-purple-500/10"
+        />
       </div>
 
       {/* Main grid */}
@@ -955,30 +700,19 @@ export function AdminDashboard() {
         <div className="space-y-6">
           <CompetitionControls state={state} onRefresh={() => refetch()} />
           <LeaderboardControls state={state} onRefresh={() => refetch()} />
-
-          <AdminParticipantManagement />
         </div>
 
         {/* Right column */}
         <div className="space-y-6">
-          <SubmissionReview />
-
-          {/* Challenge Management Link */}
           <SectionCard
-            icon={<Swords className="w-4 h-4 text-amber-400" />}
-            title="Challenge Management"
-            description="Create, edit, publish, and manage CSS challenges"
+            icon={<Target className="w-4 h-4 text-blue-400" />}
+            title="Quick Navigation"
+            description="Access other admin sections"
           >
-            <Link
-              to="/admin/challenges"
-              className="flex items-center justify-between w-full px-4 py-3 rounded-xl bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 transition-colors group"
-            >
-              <span className="text-sm text-slate-300 group-hover:text-white transition-colors">
-                Open Challenge Manager
-              </span>
-              <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-amber-400 transition-colors" />
-            </Link>
+            <QuickNavCards />
           </SectionCard>
+
+          <AdminParticipantManagementInline />
         </div>
       </div>
     </div>

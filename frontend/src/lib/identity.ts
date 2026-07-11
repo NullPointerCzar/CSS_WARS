@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-const IDENTITY_KEY = 'cssbattle_identity';
+const IDENTITY_KEY = 'csswars_identity';
 
 export interface UserIdentity {
   id: string;
@@ -41,4 +41,22 @@ export function useIdentity() {
   }, []);
 
   return identity;
+}
+
+/**
+ * Get the current user's ID from localStorage.
+ * Useful for API calls that need to identify the user.
+ */
+export function getUserId(): string | null {
+  return getIdentity()?.id ?? null;
+}
+
+/**
+ * Get the auth headers for API calls.
+ * Returns an object with x-user-id header if identity exists.
+ */
+export function getAuthHeaders(): Record<string, string> {
+  const id = getUserId();
+  if (!id) return {};
+  return { 'x-user-id': id };
 }

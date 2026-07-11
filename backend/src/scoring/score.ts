@@ -25,7 +25,7 @@ import type { ScoredResult, DiffResult } from '../comparison/types.js';
 
 /**
  * Default reference canvas used to normalize both images before comparing.
- * Matches the default render viewport (400×300, the CSS Battle standard).
+ * Matches the default render viewport (400×300, the CSS WARS standard).
  *
  * Can be overridden by passing explicit dimensions to the scoring functions.
  */

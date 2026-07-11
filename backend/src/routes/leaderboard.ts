@@ -345,7 +345,7 @@ adminLeaderboardRouter.get(
       ].join('\n');
 
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-      res.setHeader('Content-Disposition', `attachment; filename="cssbattle-leaderboard-${new Date().toISOString().split('T')[0]}.csv"`);
+      res.setHeader('Content-Disposition', `attachment; filename="csswars-leaderboard-${new Date().toISOString().split('T')[0]}.csv"`);
       res.send(csvContent);
     } catch (err) {
       console.error('Failed to export leaderboard', err);

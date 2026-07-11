@@ -1,8 +1,8 @@
 {
-  "name": "cssbattle-backend",
+  "name": "csswars-backend",
   "version": "0.1.0",
   "private": true,
-  "description": "CSS Battle Platform — Node.js + Express + TypeScript backend",
+  "description": "CSS WARS backend — Node.js + Express + TypeScript",
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",

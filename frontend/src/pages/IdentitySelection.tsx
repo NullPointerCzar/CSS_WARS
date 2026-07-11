@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Search, ArrowRight, Loader2, User as UserIcon } from 'lucide-react';
 import { setIdentity } from '../lib/identity.js';
@@ -12,6 +13,7 @@ interface Participant {
 }
 
 export function IdentitySelection() {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<Participant | null>(null);
   const [pinCode, setPinCode] = useState('');
@@ -61,7 +63,12 @@ export function IdentitySelection() {
         name: data.name,
         role: data.role,
       });
-      // App.tsx will detect the identity change and redirect automatically
+      // Redirect based on role — admins go to dashboard, participants to challenges
+      if (data.role === 'ADMIN') {
+        navigate('/admin');
+      } else {
+        navigate('/challenges');
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -104,7 +111,7 @@ export function IdentitySelection() {
             <UserIcon className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-white tracking-tight">Welcome to Yatra</h1>
-          <p className="text-slate-400 mt-2">CSS Battle Platform</p>
+          <p className="text-slate-400 mt-2">CSS WARS</p>
         </div>
 
         <AnimatePresence mode="wait">

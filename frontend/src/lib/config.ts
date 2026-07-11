@@ -1,4 +1,1 @@
-/// Admin PIN — stored in sessionStorage, not hardcoded.
-// The admin enters their PIN on first access to admin pages.
-// See ./adminPin.ts for get/set/clear helpers.
-export { getAdminPin, setAdminPin, clearAdminPin } from './adminPin.js';
+/// Config helpers — previously used for admin PIN management.\n// The admin PIN approach has been removed in favor of role-based auth.\n// See identity.ts for auth helpers and api.ts for API calls.\n

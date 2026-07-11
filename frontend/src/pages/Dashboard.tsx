@@ -29,6 +29,7 @@ interface CompetitionState {
   locked: boolean;
   status: string;
   currentRound: number;
+  unlockedRound: number | null;
   leaderboardFrozen: boolean;
 }
 
@@ -155,8 +156,10 @@ function CompetitionStatusCard({ state }: { state: CompetitionState }) {
         <div className="flex items-center gap-3 px-4 py-3 bg-slate-950/50 rounded-xl border border-slate-800/50">
           <Target className="w-4 h-4 text-blue-400 shrink-0" />
           <div>
-            <p className="text-xs text-slate-500">Current Round</p>
-            <p className="text-lg font-bold text-white">{state.currentRound}</p>
+            <p className="text-xs text-slate-500">Active Round</p>
+            <p className="text-lg font-bold text-white">
+              {state.unlockedRound ? `Round ${state.unlockedRound}` : 'None'}
+            </p>
           </div>
         </div>
 
@@ -304,6 +307,19 @@ function ChallengeQuickList({ challenges }: { challenges: Challenge[] }) {
   const navigate = useNavigate();
   const visible = challenges.slice(0, 5);
 
+  const { data: competitionState } = useQuery<{ unlockedRound: number | null; locked: boolean }>({
+    queryKey: ['competition-state-quick'],
+    queryFn: async () => {
+      const res = await fetch('/api/competition/state');
+      if (!res.ok) throw new Error('Failed to fetch competition state');
+      return res.json();
+    },
+    staleTime: 10_000,
+  });
+
+  const unlockedRound = competitionState?.unlockedRound ?? null;
+  const globallyLocked = competitionState?.locked ?? true;
+
   return (
     <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 shadow-xl">
       <div className="flex items-center justify-between mb-4">
@@ -327,6 +343,7 @@ function ChallengeQuickList({ challenges }: { challenges: Challenge[] }) {
 
       <div className="space-y-1.5">
         {visible.map((challenge, i) => {
+          const isLocked = !unlockedRound || challenge.roundNumber !== unlockedRound || globallyLocked;
           const cfg = difficultyConfig[challenge.difficulty];
           return (
             <motion.button
@@ -334,8 +351,14 @@ function ChallengeQuickList({ challenges }: { challenges: Challenge[] }) {
               initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.04 }}
-              onClick={() => navigate(`/challenges/${challenge.id}`)}
-              className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-slate-800/50 transition-colors group"
+              onClick={() => {
+                if (!isLocked) {
+                  navigate(`/challenges/${challenge.id}`);
+                }
+              }}
+              className={`w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-slate-800/50 transition-colors group ${
+                isLocked ? 'opacity-60 cursor-not-allowed' : ''
+              }`}
             >
               <div className={`w-2 h-2 rounded-full ${cfg.bg}`} />
               <span className="flex-1 text-sm font-medium text-slate-300 group-hover:text-white transition-colors truncate">
@@ -345,7 +368,15 @@ function ChallengeQuickList({ challenges }: { challenges: Challenge[] }) {
                 {cfg.label}
               </span>
               <span className="text-[10px] text-slate-600">R{challenge.roundNumber}</span>
-              <ChevronRight className="w-3.5 h-3.5 text-slate-600 group-hover:text-amber-400 transition-colors shrink-0" />
+              {isLocked && (
+                <span className="text-[10px] text-slate-500 bg-slate-800/50 px-1.5 py-0.5 rounded-md flex items-center gap-1">
+                  <Lock className="w-3 h-3" />
+                  {globallyLocked ? 'Closed' : 'Locked'}
+                </span>
+              )}
+              {!isLocked && (
+                <ChevronRight className="w-3.5 h-3.5 text-slate-600 group-hover:text-amber-400 transition-colors shrink-0" />
+              )}
             </motion.button>
           );
         })}

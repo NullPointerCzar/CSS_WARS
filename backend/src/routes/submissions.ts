@@ -134,6 +134,16 @@ submissionsRouter.post(
         return;
       }
 
+      if (msg.includes('round')) {
+        res.status(403).json({ error: msg });
+        return;
+      }
+
+      if (msg.includes('already submitted')) {
+        res.status(409).json({ error: msg });
+        return;
+      }
+
       res.status(500).json({ error: 'Failed to process submission' });
     }
   },

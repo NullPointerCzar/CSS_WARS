@@ -24,7 +24,7 @@ competitionRouter.get(
 
       if (!state) {
         // No state row yet — default to locked (no submissions allowed)
-        res.json({ locked: true, status: 'NOT_STARTED', currentRound: 1, leaderboardFrozen: false });
+        res.json({ locked: true, status: 'NOT_STARTED', currentRound: 1, unlockedRound: null, leaderboardFrozen: false });
         return;
       }
 
@@ -32,6 +32,7 @@ competitionRouter.get(
         locked: state.locked,
         status: state.status,
         currentRound: state.currentRound,
+        unlockedRound: state.unlockedRound,
         leaderboardFrozen: state.leaderboardFrozen,
       });
     } catch (err) {

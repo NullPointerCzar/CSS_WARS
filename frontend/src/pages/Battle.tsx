@@ -10,10 +10,12 @@ import {
   Eye,
   Send,
   ImageIcon,
+  Lock,
 } from 'lucide-react';
 import { useIdentity } from '../lib/identity.js';
 import { MonacoEditor } from '../components/Editor/MonacoEditor.js';
 import { LivePreview } from '../components/Preview/LivePreview.js';
+import { ColorPalette } from '../components/Preview/ColorPalette.js';
 import {
   CompareModeToggle,
   CompareView,
@@ -40,7 +42,7 @@ const difficultyConfig = {
   HARD: { color: 'text-red-400', bg: 'bg-red-500/10', label: 'Hard' },
 };
 
-const STORAGE_PREFIX = 'cssbattle_draft_';
+const STORAGE_PREFIX = 'csswars_draft_';
 
 function loadDraft(userId: string, challengeId: string): { html: string; css: string } | null {
   try {
@@ -108,7 +110,7 @@ export function Battle() {
   }, [htmlCode, cssCode]);
 
   // Fetch competition state for lock check
-  const { data: competitionState } = useQuery<{ locked: boolean; status: string }>({
+  const { data: competitionState } = useQuery<{ locked: boolean; status: string; unlockedRound: number | null }>({
     queryKey: ['competition-state'],
     queryFn: async () => {
       const res = await fetch('/api/competition/state');
@@ -119,7 +121,9 @@ export function Battle() {
     refetchInterval: 15_000,
   });
 
-  const isLocked = competitionState?.locked ?? true;
+  const isGloballyLocked = competitionState?.locked ?? true;
+  const isWrongRound = !competitionState?.unlockedRound || challenge?.roundNumber !== competitionState.unlockedRound;
+  const isLocked = isGloballyLocked || isWrongRound;
 
   // Handle submission
   const handleSubmit = useCallback(async () => {
@@ -229,10 +233,10 @@ export function Battle() {
                 <span className="text-xs text-red-400 max-w-[200px] truncate">{submitError}</span>
               </div>
             )}
-            {isLocked && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
-                <span className="text-xs text-amber-400">Submissions closed</span>
+            {isWrongRound && !isGloballyLocked && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-500/10 border border-slate-500/20">
+                <Lock className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-xs text-slate-400">Round {challenge.roundNumber} is locked</span>
               </div>
             )}
             <button
@@ -264,8 +268,9 @@ export function Battle() {
         </div>
       </div>
 
-      {/* ─── Main content: editor | target + preview ─── */}
+      {/* ─── Main content: editor | target + preview | palette ─── */}
       <div className="flex-1 flex min-h-0">
+       <div className="flex-1 flex min-w-0">
         {/* ─── Editor panel (wider — 60%) ─── */}
         <div className="w-3/5 flex flex-col border-r border-slate-800">
           <div className="flex-1 min-h-0 p-3">
@@ -354,6 +359,19 @@ export function Battle() {
             </div>
           </div>
         </div>
+       </div>
+
+        {/* ─── Color palette sidebar (far-right utility panel) ─── */}
+        {!targetImageError && (
+          <div className="w-20 shrink-0 flex flex-col border-l border-slate-800 bg-slate-950 min-h-0">
+            <div className="flex items-center justify-center px-2 py-2 border-b border-slate-800 shrink-0 bg-slate-900/50">
+              <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
+                Colors
+              </span>
+            </div>
+            <ColorPalette imageUrl={challenge.targetImageUrl} />
+          </div>
+        )}
       </div>
     </div>
   );

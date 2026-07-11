@@ -4,7 +4,7 @@ import { prisma } from '../db.js';
 export const identityRouter = Router();
 
 // GET /api/participants
-// Returns list of pre-registered participant names (id + name + hasPin)
+// Returns list of pre-registered participant names (id + name + hasPin + submissionCount)
 identityRouter.get('/participants', async (req: Request, res: Response) => {
   try {
     const users = await prisma.user.findMany({
@@ -13,6 +13,7 @@ identityRouter.get('/participants', async (req: Request, res: Response) => {
         name: true,
         role: true,
         pinCode: true,
+        _count: { select: { submissions: true } },
       },
       orderBy: { name: 'asc' },
     });
@@ -22,6 +23,7 @@ identityRouter.get('/participants', async (req: Request, res: Response) => {
       name: u.name,
       role: u.role,
       hasPin: !!u.pinCode,
+      submissionCount: u._count.submissions,
     }));
 
     res.json(participants);

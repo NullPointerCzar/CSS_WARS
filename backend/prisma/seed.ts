@@ -289,6 +289,7 @@ async function main() {
     data: {
       status: CompetitionStatus.NOT_STARTED,
       currentRound: 1,
+      unlockedRound: null,
       locked: false,
       leaderboardFrozen: false,
     },
