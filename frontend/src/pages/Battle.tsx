@@ -15,6 +15,7 @@ import {
 import { useIdentity } from '../lib/identity.js';
 import { MonacoEditor } from '../components/Editor/MonacoEditor.js';
 import { LivePreview } from '../components/Preview/LivePreview.js';
+import { ColorPalette } from '../components/Preview/ColorPalette.js';
 import {
   CompareModeToggle,
   CompareView,
@@ -267,8 +268,9 @@ export function Battle() {
         </div>
       </div>
 
-      {/* ─── Main content: editor | target + preview ─── */}
+      {/* ─── Main content: editor | target + preview | palette ─── */}
       <div className="flex-1 flex min-h-0">
+       <div className="flex-1 flex min-w-0">
         {/* ─── Editor panel (wider — 60%) ─── */}
         <div className="w-3/5 flex flex-col border-r border-slate-800">
           <div className="flex-1 min-h-0 p-3">
@@ -357,6 +359,19 @@ export function Battle() {
             </div>
           </div>
         </div>
+       </div>
+
+        {/* ─── Color palette sidebar (far-right utility panel) ─── */}
+        {!targetImageError && (
+          <div className="w-20 shrink-0 flex flex-col border-l border-slate-800 bg-slate-950 min-h-0">
+            <div className="flex items-center justify-center px-2 py-2 border-b border-slate-800 shrink-0 bg-slate-900/50">
+              <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
+                Colors
+              </span>
+            </div>
+            <ColorPalette imageUrl={challenge.targetImageUrl} />
+          </div>
+        )}
       </div>
     </div>
   );
