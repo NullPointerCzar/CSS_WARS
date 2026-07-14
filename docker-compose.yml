@@ -4,10 +4,9 @@ services:
     container_name: csswars-postgres
     restart: unless-stopped
     ports:
-      - '5432:5432'
+      - "5432:5432"
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 1234
+      POSTGRES_HOST_AUTH_METHOD: trust
       POSTGRES_DB: postgres
     volumes:
       - pgdata:/var/lib/postgresql/data

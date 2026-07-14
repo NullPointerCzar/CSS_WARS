@@ -2,7 +2,10 @@ import { createApp } from './app.js';
 import { spawn, type ChildProcess } from 'child_process';
 import path from 'path';
 import fs from 'fs';
+import { createRequire } from 'module';
 import { setRenderServiceStatus, getRenderServiceStatus } from './renderStatus.js';
+
+const _require = createRequire(import.meta.url);
 
 const PORT = Number(process.env.PORT ?? 4000);
 const RENDER_PORT = Number(process.env.RENDER_PORT ?? 4001);
@@ -34,7 +37,12 @@ function spawnRenderProcess(): ChildProcess | null {
     return null;
   }
 
-  const renderProcess = spawn('npx', ['tsx', servicePath], {
+  // Spawn tsx directly via node.exe to avoid .cmd resolution issues on Windows.
+  // npx/npx.cmd can fail with ENOENT or EINVAL on Windows when spawned from Node.
+  // Using process.execPath (always a real binary) + the tsx CLI entry point is bulletproof.
+  const tsxCliPath = _require.resolve('tsx/cli');
+
+  const renderProcess = spawn(process.execPath, [tsxCliPath, servicePath], {
     cwd: process.cwd(),
     stdio: 'pipe',
     detached: true,
@@ -115,12 +123,17 @@ async function startRenderingService(retryConfig: RetryConfig = DEFAULT_RETRY): 
       await new Promise((r) => setTimeout(r, delay));
     }
 
-    // Check if port is already occupied (informational)
+    // Check if port already has a healthy render service — if so, use it
     try {
-      await fetch(`http://localhost:${RENDER_PORT}/health`, {
+      const res = await fetch(`http://localhost:${RENDER_PORT}/health`, {
         signal: AbortSignal.timeout(500),
       });
-      console.warn(`[render-mgr] Port ${RENDER_PORT} appears to be in use. Attempting to start anyway...`);
+      if (res.ok) {
+        console.log(`[render-mgr] Reusing existing render service on port ${RENDER_PORT}`);
+        setRenderServiceStatus('ready', null);
+        return;
+      }
+      console.warn(`[render-mgr] Port ${RENDER_PORT} in use but unhealthy — spawning fresh...`);
     } catch {
       // Port is free — proceed
     }
@@ -177,8 +190,8 @@ async function startRenderingService(retryConfig: RetryConfig = DEFAULT_RETRY): 
     `[render-mgr] Rendering service failed to start after ${retryConfig.maxRetries + 1} attempt(s).`,
   );
   console.error('[render-mgr] The main API will continue running, but submissions will fail.');
-  console.error(`[render-mgr] To fix: check if port ${RENDER_PORT} is in use, or manually start:`);
-  console.error(`  cd ${process.cwd()} && RENDER_PORT=${RENDER_PORT} npx tsx src/rendering/service.ts`);
+  console.error(`[render-mgr] To fix: check if port ${RENDER_PORT} is in use, or manually start the render service in another terminal:`);
+  console.error(`  cd ${process.cwd()} && npx tsx src/rendering/service.ts`);
 }
 
 // ---------------------------------------------------------------------------
@@ -208,7 +221,8 @@ server.on('error', (err: NodeJS.ErrnoException) => {
 function shutdown(): void {
   console.log('[backend] shutting down...');
   const status = getRenderServiceStatus();
-  // If the render service was started, attempt a SIGTERM to its process
+  // If we spawned the render service ourselves, clean it up.
+  // When reusing an existing render service, pid is null so this is skipped.
   if (status.pid) {
     try {
       process.kill(status.pid, 'SIGTERM');
