@@ -93,11 +93,11 @@ export function MonacoEditor({
     <div className="flex flex-col h-full gap-3">
       {/* HTML Editor */}
       <div className="flex-1 flex flex-col min-h-0">
-        <div className="flex items-center justify-between px-4 py-2 bg-slate-800/50 border-b border-slate-700/50 rounded-t-xl">
-          <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">HTML</span>
-          <span className="text-[10px] text-slate-600 font-mono">index.html</span>
+        <div className="flex items-center justify-between px-4 py-2 bg-surface-3 border-b border-border rounded-t-xl">
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">HTML</span>
+          <span className="text-[10px] text-muted-foreground font-mono">index.html</span>
         </div>
-        <div className="flex-1 min-h-0 rounded-b-xl overflow-hidden border border-slate-800/50 border-t-0">
+        <div className="flex-1 min-h-0 rounded-b-xl overflow-hidden border border-border border-t-0">
           <Editor
             height="100%"
             defaultLanguage="html"
@@ -116,8 +116,8 @@ export function MonacoEditor({
               padding: { top: 12 },
             }}
             loading={
-              <div className="flex items-center justify-center h-full bg-slate-950">
-                <Loader2 className="w-5 h-5 animate-spin text-slate-500" />
+              <div className="flex items-center justify-center h-full bg-surface-1">
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
               </div>
             }
           />
@@ -126,11 +126,11 @@ export function MonacoEditor({
 
       {/* CSS Editor */}
       <div className="flex-1 flex flex-col min-h-0">
-        <div className="flex items-center justify-between px-4 py-2 bg-slate-800/50 border-b border-slate-700/50 rounded-t-xl">
-          <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">CSS</span>
-          <span className="text-[10px] text-slate-600 font-mono">styles.css</span>
+        <div className="flex items-center justify-between px-4 py-2 bg-surface-3 border-b border-border rounded-t-xl">
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">CSS</span>
+          <span className="text-[10px] text-muted-foreground font-mono">styles.css</span>
         </div>
-        <div className="flex-1 min-h-0 rounded-b-xl overflow-hidden border border-slate-800/50 border-t-0">
+        <div className="flex-1 min-h-0 rounded-b-xl overflow-hidden border border-border border-t-0">
           <Editor
             height="100%"
             defaultLanguage="css"
@@ -149,8 +149,8 @@ export function MonacoEditor({
               padding: { top: 12 },
             }}
             loading={
-              <div className="flex items-center justify-center h-full bg-slate-950">
-                <Loader2 className="w-5 h-5 animate-spin text-slate-500" />
+              <div className="flex items-center justify-center h-full bg-surface-1">
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
               </div>
             }
           />

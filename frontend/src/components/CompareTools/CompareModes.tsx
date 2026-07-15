@@ -36,15 +36,15 @@ export function CompareModeToggle({
   ];
 
   return (
-    <div className="flex items-center gap-1 bg-slate-800/80 rounded-lg p-1">
+    <div className="flex items-center gap-1 bg-surface-3 rounded-lg p-1">
       {modes.map((m) => (
         <button
           key={m.key}
           onClick={() => onModeChange(m.key)}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
             mode === m.key
-              ? 'bg-amber-500/20 text-amber-400 shadow-sm'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+              ? 'bg-brand/20 text-brand shadow-sm'
+              : 'text-muted-foreground hover:text-foreground hover:bg-surface-4'
           }`}
         >
           {m.icon}
@@ -108,7 +108,7 @@ function SplitSlider({
       </div>
 
       <div
-        className="absolute top-0 bottom-0 w-0.5 bg-amber-400 shadow-lg shadow-amber-500/50 z-20 pointer-events-none"
+        className="absolute top-0 bottom-0 w-0.5 bg-brand shadow-lg shadow-brand/50 z-20 pointer-events-none"
         style={{ left: `${splitPos}%`, transform: 'translateX(-50%)' }}
       />
     </div>
@@ -142,17 +142,17 @@ function OpacitySlider({
           draggable={false}
         />
       </div>
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3 bg-slate-900/80 backdrop-blur-sm rounded-lg px-4 py-2 border border-slate-700/50 min-w-[200px]">
-        <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3 bg-surface-2 backdrop-blur-sm rounded-lg px-4 py-2 border border-border min-w-[200px]">
+        <SlidersHorizontal className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
         <input
           type="range"
           min={0}
           max={100}
           value={opacity}
           onChange={(e) => setOpacity(Number(e.target.value))}
-          className="w-full h-1.5 bg-slate-700 rounded-full appearance-none cursor-pointer accent-amber-500 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-amber-500 [&::-webkit-slider-thumb]:cursor-pointer"
+          className="w-full h-1.5 bg-surface-4 rounded-full appearance-none cursor-pointer accent-brand [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-brand [&::-webkit-slider-thumb]:cursor-pointer"
         />
-        <span className="text-xs text-slate-400 font-mono w-8 text-right shrink-0">
+        <span className="text-xs text-muted-foreground font-mono w-8 text-right shrink-0">
           {opacity}%
         </span>
       </div>
@@ -305,14 +305,14 @@ function DiffMode({
     <div className="absolute inset-0 z-10">
       {error && !isComputing && (
         <div className="flex items-center justify-center h-full p-4">
-          <p className="text-sm text-red-400 text-center max-w-sm">{error}</p>
+          <p className="text-sm text-destructive text-center max-w-sm">{error}</p>
         </div>
       )}
 
       {isComputing && !diffUrl && (
         <div className="flex items-center justify-center h-full">
-          <div className="flex flex-col items-center gap-3 text-slate-400">
-            <div className="w-6 h-6 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin" />
+          <div className="flex flex-col items-center gap-3 text-muted-foreground">
+            <div className="w-6 h-6 border-2 border-brand/30 border-t-brand rounded-full animate-spin" />
             <p className="text-sm">Scoring via rendering engine...</p>
           </div>
         </div>
@@ -326,8 +326,8 @@ function DiffMode({
             className="w-full h-full object-contain opacity-60"
           />
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="flex flex-col items-center gap-3 text-slate-200 bg-slate-950/70 backdrop-blur-sm rounded-xl px-6 py-4 border border-slate-800">
-              <div className="w-6 h-6 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin" />
+            <div className="flex flex-col items-center gap-3 text-foreground bg-surface-1 backdrop-blur-sm rounded-xl px-6 py-4 border border-border">
+              <div className="w-6 h-6 border-2 border-brand/30 border-t-brand rounded-full animate-spin" />
               <p className="text-sm">Updating diff…</p>
             </div>
           </div>
@@ -335,7 +335,7 @@ function DiffMode({
       )}
 
       {!isComputing && diffUrl && (
-        <div className="w-full h-full bg-slate-950 flex items-center justify-center">
+        <div className="w-full h-full bg-surface-1 flex items-center justify-center">
           <img
             src={diffUrl}
             alt="Difference overlay — mismatched pixels highlighted"
@@ -345,16 +345,16 @@ function DiffMode({
       )}
 
       {diffUrl && score !== null && (
-        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 bg-slate-900/80 backdrop-blur-sm text-xs font-medium rounded-lg border border-slate-700/50 font-mono">
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 bg-surface-2 backdrop-blur-sm text-xs font-medium rounded-lg border border-border font-mono">
           <span
             className={
               score >= 90
-                ? 'text-emerald-400'
+                ? 'text-success'
                 : score >= 75
-                  ? 'text-blue-400'
+                  ? 'text-accent'
                   : score >= 50
-                    ? 'text-amber-400'
-                    : 'text-red-400'
+                    ? 'text-warning'
+                    : 'text-destructive'
             }
           >
             {score.toFixed(2)}% match
@@ -366,7 +366,7 @@ function DiffMode({
         <div className="absolute top-2 right-2 z-20">
           <button
             onClick={runDiff}
-            className="px-3 py-1.5 bg-slate-800/90 hover:bg-slate-700 text-xs text-slate-300 rounded-lg transition-colors backdrop-blur-sm border border-slate-700/50"
+            className="px-3 py-1.5 bg-surface-3 hover:bg-surface-4 text-xs text-foreground rounded-lg transition-colors backdrop-blur-sm border border-border"
           >
             Re-run
           </button>

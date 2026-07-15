@@ -113,7 +113,7 @@ export function ImageViewer({
         />
       </div>
       {/* Zoom indicator */}
-      <div className="absolute bottom-2 right-2 bg-slate-900/80 backdrop-blur-sm text-xs text-slate-400 px-2 py-1 rounded-md font-mono select-none">
+      <div className="absolute bottom-2 right-2 bg-surface-2 backdrop-blur-sm text-xs text-muted-foreground px-2 py-1 rounded-md font-mono select-none">
         {Math.round(scale * 100)}%
       </div>
     </div>

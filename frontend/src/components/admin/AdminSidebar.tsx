@@ -1,4 +1,4 @@
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Swords,
@@ -6,26 +6,12 @@ import {
   FileText,
   BarChart3,
   Settings,
-  ChevronRight,
   LogOut,
   Trophy,
+  ChevronRight,
 } from 'lucide-react';
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarRail,
-  SidebarTrigger,
-  useSidebar,
-} from '@/components/ui/sidebar';
 import { clearIdentity } from '../../lib/identity.js';
+import { cn } from '@/lib/utils.js';
 
 const navItems = [
   { to: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
@@ -36,126 +22,121 @@ const navItems = [
 ];
 
 const secondaryItems = [
-  { to: '/admin/analytics', icon: BarChart3, label: 'Analytics', soon: true },
-  { to: '/admin/settings', icon: Settings, label: 'Settings', soon: true },
+  { to: '/admin/analytics', icon: BarChart3, label: 'Analytics' },
+  { to: '/admin/settings', icon: Settings, label: 'Settings' },
 ];
 
-export function AppAdminSidebar() {
-  const { state, toggleSidebar } = useSidebar();
-  const collapsed = state === 'collapsed';
+export function AppAdminSidebar({
+  collapsed,
+  onToggle,
+}: {
+  collapsed: boolean;
+  onToggle: () => void;
+}) {
+  const location = useLocation();
+  const isActive = (to: string) =>
+    to === '/admin'
+      ? location.pathname === '/admin'
+      : location.pathname.startsWith(to);
 
   return (
-    <Sidebar collapsible="icon" variant="sidebar">
-      {/* Branding header with collapse toggle */}
-      <SidebarHeader className="flex flex-row items-center gap-2 p-2">
+    <aside
+      className={cn(
+        'flex h-screen shrink-0 flex-col border-r border-border bg-sidebar text-sidebar-foreground transition-[width] duration-200 ease-linear',
+        collapsed ? 'w-[4.5rem]' : 'w-64',
+      )}
+    >
+      {/* Header / brand */}
+      <div
+        className={cn(
+          'flex items-center gap-2 border-b border-border p-3',
+          collapsed && 'justify-center',
+        )}
+      >
         <button
-          onClick={() => toggleSidebar()}
-          className="flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 text-white text-sm font-bold shadow-sm shrink-0 hover:brightness-110 transition-all cursor-pointer"
+          onClick={onToggle}
+          className="flex aspect-square size-9 shrink-0 items-center justify-center rounded-lg bg-brand text-brand-foreground text-sm font-bold ring-1 ring-brand/30 transition hover:brightness-110"
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           C
         </button>
         {!collapsed && (
           <div className="grid flex-1 text-left leading-tight">
-            <span className="truncate font-semibold text-white text-sm">CSS WARS</span>
+            <span className="truncate text-sm font-semibold text-foreground">
+              CSS WARS
+            </span>
             <span className="truncate text-[10px] text-sidebar-foreground/60">
               Admin Control Panel
             </span>
           </div>
         )}
-        {!collapsed && (
-          <SidebarTrigger className="size-7 p-0 text-sidebar-foreground/40 hover:text-sidebar-foreground" />
-        )}
-      </SidebarHeader>
+      </div>
 
       {/* Main navigation */}
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Main</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navItems.map((item) => (
-                <NavItem key={item.to} item={item} collapsed={collapsed} />
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+      <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-3">
+        {navItems.map((item) => {
+          const active = isActive(item.to);
+          return (
+            <Link
+              key={item.to}
+              to={item.to}
+              title={collapsed ? item.label : undefined}
+              className={cn(
+                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                collapsed && 'justify-center px-0',
+                active
+                  ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                  : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground',
+              )}
+            >
+              <item.icon className="size-4 shrink-0" />
+              {!collapsed && <span className="truncate">{item.label}</span>}
+              {active && !collapsed && (
+                <ChevronRight className="ml-auto size-3 opacity-60" />
+              )}
+            </Link>
+          );
+        })}
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Other</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {secondaryItems.map((item) => (
-                <SidebarMenuItem key={item.to}>
-                  <SidebarMenuButton
-                    disabled
-                    className="opacity-50 cursor-not-allowed"
-                    tooltip={`${item.label} (Coming soon)`}
-                  >
-                    <item.icon />
-                    <span>{item.label}</span>
-                    {!collapsed && (
-                      <span className="ml-auto text-[10px] text-sidebar-foreground/40 bg-sidebar-accent/50 px-1.5 py-0.5 rounded-md">
-                        Soon
-                      </span>
-                    )}
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
+        <div className="my-2 border-t border-border" />
+
+        {secondaryItems.map((item) => (
+          <div
+            key={item.to}
+            title={`${item.label} (Coming soon)`}
+            className={cn(
+              'flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground/40 opacity-60',
+              collapsed && 'justify-center px-0',
+            )}
+          >
+            <item.icon className="size-4 shrink-0" />
+            {!collapsed && <span className="truncate">{item.label}</span>}
+            {!collapsed && (
+              <span className="ml-auto rounded-md bg-sidebar-accent/50 px-1.5 py-0.5 text-[10px]">
+                Soon
+              </span>
+            )}
+          </div>
+        ))}
+      </nav>
 
       {/* Footer */}
-      <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              onClick={() => {
-                clearIdentity();
-                window.location.href = '/';
-              }}
-              tooltip="Back to main site"
-            >
-              <LogOut className="rotate-180" />
-              <span>Back to site</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
-
-      <SidebarRail />
-    </Sidebar>
-  );
-}
-
-function NavItem({
-  item,
-  collapsed,
-}: {
-  item: { to: string; icon: any; label: string };
-  collapsed: boolean;
-}) {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const isActive = item.to === '/admin'
-    ? location.pathname === '/admin'
-    : location.pathname.startsWith(item.to);
-
-  return (
-    <SidebarMenuItem>
-      <SidebarMenuButton
-        isActive={isActive}
-        tooltip={collapsed ? item.label : undefined}
-        onClick={() => navigate(item.to)}
-      >
-        <item.icon />
-        <span>{item.label}</span>
-        {isActive && !collapsed && (
-          <ChevronRight className="ml-auto size-3 text-sidebar-accent-foreground/50" />
-        )}
-      </SidebarMenuButton>
-    </SidebarMenuItem>
+      <div className="border-t border-border p-2">
+        <button
+          onClick={() => {
+            clearIdentity();
+            window.location.href = '/';
+          }}
+          title="Back to main site"
+          className={cn(
+            'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-foreground',
+            collapsed && 'justify-center px-0',
+          )}
+        >
+          <LogOut className="size-4 shrink-0 rotate-180" />
+          {!collapsed && <span>Back to site</span>}
+        </button>
+      </div>
+    </aside>
   );
 }

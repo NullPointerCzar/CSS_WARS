@@ -62,28 +62,21 @@ interface OverallResponse {
 function RankBadge({ rank }: { rank: number }) {
   if (rank === 1) {
     return (
-      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center shadow-lg shadow-amber-500/30">
-        <Medal className="w-4 h-4 text-white" />
+      <div className="w-8 h-8 rounded-full bg-brand text-brand-foreground flex items-center justify-center shadow-soft-md ring-2 ring-brand/30">
+        <Medal className="w-4 h-4" />
       </div>
     );
   }
-  if (rank === 2) {
+  if (rank === 2 || rank === 3) {
     return (
-      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-300 to-slate-400 flex items-center justify-center shadow-lg shadow-slate-400/30">
-        <Medal className="w-4 h-4 text-slate-700" />
-      </div>
-    );
-  }
-  if (rank === 3) {
-    return (
-      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-600 to-orange-700 flex items-center justify-center shadow-lg shadow-amber-700/30">
-        <Medal className="w-4 h-4 text-amber-200" />
+      <div className="w-8 h-8 rounded-full bg-surface-4 text-muted-foreground flex items-center justify-center">
+        <Medal className="w-4 h-4" />
       </div>
     );
   }
   return (
-    <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center">
-      <span className="text-sm font-semibold text-slate-400">{rank}</span>
+    <div className="w-8 h-8 rounded-full bg-surface-3 border border-border flex items-center justify-center">
+      <span className="text-sm font-semibold text-muted-foreground num">{rank}</span>
     </div>
   );
 }
@@ -96,12 +89,12 @@ function ScoreCell({ score, maxScore }: { score: number; maxScore?: number }) {
   const pct = maxScore ? (score / maxScore) * 100 : Math.min(score, 100);
   const color =
     pct >= 90
-      ? 'text-emerald-400'
+      ? 'text-success'
       : pct >= 75
-        ? 'text-blue-400'
+        ? 'text-accent'
         : pct >= 50
-          ? 'text-amber-400'
-          : 'text-red-400';
+          ? 'text-warning'
+          : 'text-destructive';
 
   return (
     <span className={`font-mono font-bold ${color}`}>
@@ -134,52 +127,49 @@ function LeaderboardTable({
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: i * 0.02 }}
-            className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all ${
+            className={`flex items-center gap-4 px-4 py-3 rounded-md transition-all ${
               isCurrentUser
-                ? 'bg-amber-500/10 border border-amber-500/30 shadow-sm shadow-amber-500/10'
-                : 'hover:bg-slate-800/50 border border-transparent'
+                ? 'bg-brand-soft border border-brand/30 shadow-soft-sm'
+                : 'hover:bg-surface-3 border border-transparent'
             }`}
           >
-            {/* Rank */}
             <div className="shrink-0">
               <RankBadge rank={entry.rank} />
             </div>
 
-            {/* Name */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <span
                   className={`font-medium truncate ${
-                    isCurrentUser ? 'text-amber-300' : 'text-white'
+                    isCurrentUser ? 'text-brand' : 'text-foreground'
                   }`}
                 >
                   {entry.name}
                 </span>
                 {isCurrentUser && (
-                  <span className="text-[10px] font-medium text-amber-500 bg-amber-500/15 px-1.5 py-0.5 rounded-md">
+                  <span className="text-[10px] font-medium text-brand bg-brand/15 px-1.5 py-0.5 rounded">
                     You
                   </span>
                 )}
               </div>
               {entry.rollNumber && (
-                <span className="text-xs text-slate-500">{entry.rollNumber}</span>
+                <span className="text-xs text-muted-foreground">{entry.rollNumber}</span>
               )}
             </div>
 
-            {/* Score or Total Score */}
             {'score' in lbEntry ? (
               <div className="text-right shrink-0">
                 <ScoreCell score={lbEntry.score} />
-                <div className="text-[10px] text-slate-600 font-mono">
+                <div className="text-[10px] text-muted-foreground font-mono">
                   {lbEntry.codeLength.toLocaleString()} B
                 </div>
               </div>
             ) : (
               <div className="text-right shrink-0">
-                <span className="font-mono font-bold text-white text-lg">
+                <span className="font-mono font-bold text-foreground text-lg num">
                   {ovEntry.totalScore.toFixed(1)}
                 </span>
-                <div className="text-[10px] text-slate-500">
+                <div className="text-[10px] text-muted-foreground">
                   {ovEntry.challengesCompleted} challenge{ovEntry.challengesCompleted !== 1 ? 's' : ''}
                 </div>
               </div>
@@ -203,13 +193,13 @@ function ViewToggle({
   onChange: (v: 'per-challenge' | 'overall') => void;
 }) {
   return (
-    <div className="flex items-center gap-1 bg-slate-800/80 rounded-lg p-1">
+    <div className="flex items-center gap-1 bg-surface-3 border border-border rounded-md p-1">
       <button
         onClick={() => onChange('per-challenge')}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-all ${
           view === 'per-challenge'
-            ? 'bg-amber-500/20 text-amber-400 shadow-sm'
-            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+            ? 'bg-brand-soft text-brand shadow-sm'
+            : 'text-muted-foreground hover:text-foreground'
         }`}
       >
         <Target className="w-3.5 h-3.5" />
@@ -217,10 +207,10 @@ function ViewToggle({
       </button>
       <button
         onClick={() => onChange('overall')}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-all ${
           view === 'overall'
-            ? 'bg-amber-500/20 text-amber-400 shadow-sm'
-            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+            ? 'bg-brand-soft text-brand shadow-sm'
+            : 'text-muted-foreground hover:text-foreground'
         }`}
       >
         <BarChart3 className="w-3.5 h-3.5" />
@@ -239,7 +229,6 @@ export function Leaderboard() {
   const [view, setView] = useState<'per-challenge' | 'overall'>('overall');
   const [selectedChallengeId, setSelectedChallengeId] = useState<string | null>(null);
 
-  // Fetch all published challenges for the dropdown
   const { data: challenges = [] } = useQuery<Challenge[]>({
     queryKey: ['challenges'],
     queryFn: async () => {
@@ -250,14 +239,12 @@ export function Leaderboard() {
     staleTime: 30_000,
   });
 
-  // Auto-select first challenge when data loads
   useEffect(() => {
     if (!selectedChallengeId && challenges.length > 0) {
       setSelectedChallengeId(challenges[0].id);
     }
   }, [selectedChallengeId, challenges]);
 
-  // Fetch per-challenge leaderboard
   const {
     data: challengeLb,
     isLoading: challengeLoading,
@@ -275,7 +262,6 @@ export function Leaderboard() {
     staleTime: 4_000,
   });
 
-  // Fetch overall leaderboard
   const {
     data: overallLb,
     isLoading: overallLoading,
@@ -298,24 +284,22 @@ export function Leaderboard() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
-          <Trophy className="w-6 h-6 text-white" />
+      <div className="flex items-center gap-3 mb-7">
+        <div className="w-11 h-11 rounded-md border border-border bg-surface-3 flex items-center justify-center">
+          <Trophy className="w-5 h-5 text-brand" />
         </div>
         <div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Leaderboard</h1>
-          <p className="text-slate-400 mt-1">Live rankings — updated every few seconds</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Leaderboard</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Live rankings — updated every few seconds</p>
         </div>
       </div>
 
-      {/* Frozen banner */}
       {isFrozen && (
-        <div className="flex items-center gap-3 mb-6 px-5 py-3 bg-blue-500/10 border border-blue-500/20 rounded-xl">
-          <Snowflake className="w-5 h-5 text-blue-400 shrink-0" />
+        <div className="flex items-center gap-3 mb-5 px-4 py-3 bg-info-soft border border-info/20 rounded-md">
+          <Snowflake className="w-5 h-5 text-info shrink-0" />
           <div>
-            <p className="text-sm font-medium text-blue-300">Results frozen</p>
-            <p className="text-xs text-blue-400/70">
+            <p className="text-sm font-medium text-info">Results frozen</p>
+            <p className="text-xs text-info/70">
               Final standings were captured at{' '}
               {frozenAt ? new Date(frozenAt).toLocaleString() : 'an unknown time'}.
               New submissions are not reflected.
@@ -324,8 +308,7 @@ export function Leaderboard() {
         </div>
       )}
 
-      {/* Controls row */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-5">
         <ViewToggle view={view} onChange={setView} />
 
         {view === 'per-challenge' && challenges.length > 0 && (
@@ -333,7 +316,7 @@ export function Leaderboard() {
             <select
               value={selectedChallengeId ?? ''}
               onChange={(e) => setSelectedChallengeId(e.target.value)}
-              className="appearance-none bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-4 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 cursor-pointer"
+              className="appearance-none bg-surface-3 border border-border text-foreground text-sm rounded-md pl-3 pr-9 py-2 focus:outline-none focus:ring-2 focus:ring-ring focus:border-brand cursor-pointer"
             >
               {challenges.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -341,46 +324,41 @@ export function Leaderboard() {
                 </option>
               ))}
             </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           </div>
         )}
       </div>
 
-      {/* Loading state */}
       {view === 'per-challenge' && challengeLoading && (
-        <div className="flex flex-col items-center justify-center py-24 text-slate-400">
-          <Loader2 className="w-8 h-8 animate-spin mb-4 text-amber-500" />
-          <p>Loading leaderboard...</p>
+        <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
+          <Loader2 className="w-8 h-8 animate-spin mb-4 text-brand" />
+          <p>Loading leaderboard…</p>
         </div>
       )}
 
       {view === 'overall' && overallLoading && (
-        <div className="flex flex-col items-center justify-center py-24 text-slate-400">
-          <Loader2 className="w-8 h-8 animate-spin mb-4 text-amber-500" />
-          <p>Loading overall rankings...</p>
+        <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
+          <Loader2 className="w-8 h-8 animate-spin mb-4 text-brand" />
+          <p>Loading overall rankings…</p>
         </div>
       )}
 
-      {/* Error state */}
       {((view === 'per-challenge' && challengeError) ||
         (view === 'overall' && overallError)) && (
-        <div className="flex flex-col items-center justify-center py-24">
-          <AlertCircle className="w-12 h-12 text-red-400 mb-4" />
-          <p className="text-red-400">Failed to load leaderboard.</p>
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <AlertCircle className="w-10 h-10 text-destructive mb-4" />
+          <p className="text-destructive">Failed to load leaderboard.</p>
         </div>
       )}
 
-      {/* Empty state */}
       {view === 'per-challenge' &&
         !challengeLoading &&
         !challengeError &&
         challengeLb?.entries.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-24 text-slate-500">
-            <Trophy className="w-12 h-12 mb-4 opacity-30" />
-            <p className="text-lg font-medium">No submissions yet</p>
-            <p className="text-sm mt-1">
-              Be the first to submit a solution for this challenge!
-            </p>
+          <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
+            <Trophy className="w-10 h-10 mb-4 opacity-30" />
+            <p className="text-base font-medium text-foreground">No submissions yet</p>
+            <p className="text-sm mt-1">Be the first to submit a solution for this challenge!</p>
           </div>
         )}
 
@@ -388,22 +366,19 @@ export function Leaderboard() {
         !overallLoading &&
         !overallError &&
         overallLb?.entries.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-24 text-slate-500">
-            <BarChart3 className="w-12 h-12 mb-4 opacity-30" />
-            <p className="text-lg font-medium">No data yet</p>
-            <p className="text-sm mt-1">
-              Rankings will appear once participants submit solutions.
-            </p>
+          <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
+            <BarChart3 className="w-10 h-10 mb-4 opacity-30" />
+            <p className="text-base font-medium text-foreground">No data yet</p>
+            <p className="text-sm mt-1">Rankings will appear once participants submit solutions.</p>
           </div>
         )}
 
-      {/* Leaderboard content */}
       {view === 'per-challenge' &&
         !challengeLoading &&
         !challengeError &&
         challengeLb &&
         challengeLb.entries.length > 0 && (
-          <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4 shadow-xl">
+          <div className="bg-card border border-border rounded-lg p-3 shadow-soft-sm">
             <LeaderboardTable
               entries={challengeLb.entries}
               currentUserId={identity?.id ?? null}
@@ -416,7 +391,7 @@ export function Leaderboard() {
         !overallError &&
         overallLb &&
         overallLb.entries.length > 0 && (
-          <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4 shadow-xl">
+          <div className="bg-card border border-border rounded-lg p-3 shadow-soft-sm">
             <LeaderboardTable
               entries={overallLb.entries}
               currentUserId={identity?.id ?? null}

@@ -1,3 +1,5 @@
+@import "@fontsource-variable/geist/index.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -8,40 +10,105 @@ body,
   height: 100%;
 }
 
+/* ─────────────────────────────────────────────────────────────
+   CSS Battle — Design System
+   Curated warm-neutral surface palette, single brand accent,
+   semantic state colors, type scale, radii, shadows.
+   ───────────────────────────────────────────────────────────── */
+
 @layer base {
   :root {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --radius: 0.625rem;
-    --chart-1: oklch(0.488 0.243 264.376);
-    --chart-2: oklch(0.696 0.17 162.48);
-    --chart-3: oklch(0.769 0.188 70.08);
-    --chart-4: oklch(0.627 0.265 303.9);
-    --chart-5: oklch(0.645 0.246 16.439);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
+    /* ── Surfaces (warm-neutral, very low chroma) ── */
+    --background: oklch(0.16 0.005 270);
+    --foreground: oklch(0.96 0.003 270);
+
+    --surface-1: oklch(0.18 0.006 270);   /* page bg */
+    --surface-2: oklch(0.21 0.006 270);   /* card */
+    --surface-3: oklch(0.25 0.006 270);   /* raised */
+    --surface-4: oklch(0.30 0.006 270);   /* hover */
+
+    --card: var(--surface-2);
+    --card-foreground: var(--foreground);
+    --popover: var(--surface-3);
+    --popover-foreground: var(--foreground);
+
+    /* ── Brand: warm amber (single accent) ── */
+    --brand: oklch(0.78 0.16 65);
+    --brand-foreground: oklch(0.18 0.01 65);
+    --brand-soft: oklch(0.32 0.06 65);
+
+    /* ── Accent: cool indigo (secondary emphasis) ── */
+    --accent: oklch(0.62 0.16 270);
+    --accent-foreground: oklch(0.98 0 0);
+    --accent-soft: oklch(0.30 0.07 270);
+
+    /* ── Legacy shadcn aliases (re-mapped to new tokens) ── */
+    --primary: var(--brand);
+    --primary-foreground: var(--brand-foreground);
+    --secondary: var(--surface-3);
+    --secondary-foreground: var(--foreground);
+    --muted: var(--surface-3);
+    --muted-foreground: oklch(0.68 0.005 270);
+
+    /* ── Semantic states ── */
+    --success: oklch(0.72 0.16 155);
+    --success-soft: oklch(0.30 0.08 155);
+    --success-foreground: oklch(0.16 0.01 155);
+
+    --warning: oklch(0.78 0.14 75);
+    --warning-soft: oklch(0.32 0.07 75);
+    --warning-foreground: oklch(0.18 0.01 75);
+
+    --destructive: oklch(0.65 0.22 25);
+    --destructive-soft: oklch(0.30 0.10 25);
+    --destructive-foreground: oklch(0.98 0 0);
+
+    --info: oklch(0.65 0.14 230);
+    --info-soft: oklch(0.30 0.07 230);
+    --info-foreground: oklch(0.98 0 0);
+
+    /* ── Borders & focus ── */
+    --border: oklch(1 0 0 / 8%);
+    --border-strong: oklch(1 0 0 / 14%);
+    --input: oklch(1 0 0 / 10%);
+    --ring: var(--brand);
+
+    /* ── Radius scale (4 / 6 / 10 / 14 / 20) ── */
+    --radius-xs: 4px;
+    --radius-sm: 6px;
+    --radius: 10px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 20px;
+
+    /* ── Shadows ── */
+    --shadow-sm: 0 1px 2px 0 oklch(0 0 0 / 0.30);
+    --shadow-md: 0 4px 8px -2px oklch(0 0 0 / 0.30), 0 1px 2px 0 oklch(0 0 0 / 0.20);
+    --shadow-lg: 0 12px 24px -6px oklch(0 0 0 / 0.40), 0 4px 8px -2px oklch(0 0 0 / 0.20);
+    --shadow-focus: 0 0 0 2px var(--background), 0 0 0 4px var(--brand);
+
+    /* ── Type scale ── */
+    --font-sans: "Geist Variable", ui-sans-serif, system-ui, -apple-system,
+      "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono",
+      Menlo, Monaco, Consolas, monospace;
+
+    /* ── Sidebar tokens ── */
+    --sidebar: var(--surface-1);
+    --sidebar-foreground: var(--foreground);
+    --sidebar-primary: var(--brand);
+    --sidebar-primary-foreground: var(--brand-foreground);
+    --sidebar-accent: var(--surface-3);
+    --sidebar-accent-foreground: var(--foreground);
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--brand);
+
+    /* ── Chart palette (kept for compatibility) ── */
+    --chart-1: var(--brand);
+    --chart-2: var(--accent);
+    --chart-3: var(--success);
+    --chart-4: var(--warning);
+    --chart-5: var(--destructive);
   }
 
   *,
@@ -49,7 +116,59 @@ body,
   *::after {
     border-color: var(--border);
   }
+
+  html {
+    color-scheme: dark;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01", "ss03";
+  }
+
+  /* Number/tabular figures in stat tiles & tables */
+  .num {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--surface-4);
+    border-radius: 999px;
+    border: 2px solid var(--background);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--muted-foreground);
+  }
+
+  /* Global focus-visible ring (for non-button focusable elements) */
+  :focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+    border-radius: var(--radius-xs);
+  }
+}
+
+@layer components {
+  /* Subtle inner highlight on cards (depth without gradients) */
+  .surface-2 {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+  }
+  .surface-3 {
+    background: var(--surface-3);
+    border: 1px solid var(--border);
   }
 }

@@ -29,9 +29,9 @@ interface Challenge {
 }
 
 const difficultyConfig = {
-  EASY: { color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', label: 'Easy' },
-  MEDIUM: { color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20', label: 'Medium' },
-  HARD: { color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20', label: 'Hard' },
+  EASY: { color: 'text-success', bg: 'bg-success/10', border: 'border-success/20', label: 'Easy' },
+  MEDIUM: { color: 'text-warning', bg: 'bg-warning/10', border: 'border-warning/20', label: 'Medium' },
+  HARD: { color: 'text-destructive', bg: 'bg-destructive/10', border: 'border-destructive/20', label: 'Hard' },
 };
 
 function ChallengeForm({
@@ -122,55 +122,55 @@ function ChallengeForm({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-surface-1/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+        className="bg-surface-2 border border-border rounded-2xl p-8 shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
       >
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-white">
+          <h2 className="text-xl font-bold text-foreground">
             {challenge ? 'Edit Challenge' : 'Create Challenge'}
           </h2>
-          <button onClick={handleClose} className="text-slate-500 hover:text-white transition-colors">
+          <button onClick={handleClose} className="text-muted-foreground hover:text-foreground transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1.5">Title</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1.5">Title</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
-              className="w-full bg-slate-950/50 border border-slate-800 text-white rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all"
+              className="w-full bg-surface-1 border border-border text-foreground rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-warning transition-all"
               placeholder="e.g. Simple Square"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1.5">Description</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1.5">Description</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
-              className="w-full bg-slate-950/50 border border-slate-800 text-white rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all resize-none"
+              className="w-full bg-surface-1 border border-border text-foreground rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-warning transition-all resize-none"
               placeholder="Describe what participants need to build..."
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1.5">Difficulty</label>
+              <label className="block text-sm font-medium text-muted-foreground mb-1.5">Difficulty</label>
               <select
                 value={difficulty}
                 onChange={(e) => setDifficulty(e.target.value as 'EASY' | 'MEDIUM' | 'HARD')}
-                className="w-full bg-slate-950/50 border border-slate-800 text-white rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all"
+                className="w-full bg-surface-1 border border-border text-foreground rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-warning transition-all"
               >
                 <option value="EASY">Easy</option>
                 <option value="MEDIUM">Medium</option>
@@ -178,23 +178,23 @@ function ChallengeForm({
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1.5">Round</label>
+              <label className="block text-sm font-medium text-muted-foreground mb-1.5">Round</label>
               <input
                 type="number"
                 min={1}
                 value={roundNumber}
                 onChange={(e) => setRoundNumber(Number(e.target.value))}
                 required
-                className="w-full bg-slate-950/50 border border-slate-800 text-white rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all"
+                className="w-full bg-surface-1 border border-border text-foreground rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-warning transition-all"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1.5">Target Image</label>
-            <label className="flex items-center gap-3 px-4 py-3 bg-slate-950/50 border border-dashed border-slate-700 rounded-xl cursor-pointer hover:border-amber-500/50 transition-colors">
-              <Upload className="w-5 h-5 text-slate-500" />
-              <span className="text-sm text-slate-400">
+            <label className="block text-sm font-medium text-muted-foreground mb-1.5">Target Image</label>
+            <label className="flex items-center gap-3 px-4 py-3 bg-surface-1 border border-dashed border-border rounded-xl cursor-pointer hover:border-warning/50 transition-colors">
+              <Upload className="w-5 h-5 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">
                 {imageFile ? imageFile.name : 'Choose an image file...'}
               </span>
               <input
@@ -214,17 +214,17 @@ function ChallengeForm({
                 className="hidden"
               />
             </label>
-            <p className="text-xs text-slate-600 mt-1">Accepted: PNG, JPG, GIF, WebP, SVG (max 5MB)</p>
+            <p className="text-xs text-muted-foreground mt-1">Accepted: PNG, JPG, GIF, WebP, SVG (max 5MB)</p>
             {imagePreview && (
               <div className="mt-3 inline-block">
-                <p className="text-xs text-slate-500 mb-1">Preview:</p>
-                <img src={imagePreview} alt="Preview" className="h-24 rounded-lg border border-slate-700 object-contain bg-white" />
+                <p className="text-xs text-muted-foreground mb-1">Preview:</p>
+                <img src={imagePreview} alt="Preview" className="h-24 rounded-lg border border-border object-contain bg-surface-1" />
               </div>
             )}
             {challenge?.targetImageUrl && !imageFile && (
               <div className="mt-3 inline-block">
-                <p className="text-xs text-slate-500 mb-1">Current image:</p>
-                <img src={challenge.targetImageUrl} alt="Current" className="h-24 rounded-lg border border-slate-700 object-contain bg-white" />
+                <p className="text-xs text-muted-foreground mb-1">Current image:</p>
+                <img src={challenge.targetImageUrl} alt="Current" className="h-24 rounded-lg border border-border object-contain bg-surface-1" />
               </div>
             )}
           </div>
@@ -235,7 +235,7 @@ function ChallengeForm({
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="bg-red-500/10 text-red-400 p-3 rounded-lg text-sm border border-red-500/20"
+                className="bg-destructive/10 text-destructive p-3 rounded-lg text-sm border border-destructive/20"
               >
                 {error}
               </motion.div>
@@ -246,14 +246,14 @@ function ChallengeForm({
             <button
               type="button"
               onClick={handleClose}
-              className="flex-1 py-2.5 px-4 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              className="flex-1 py-2.5 px-4 rounded-xl text-muted-foreground hover:text-foreground hover:bg-surface-3 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-[2] bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2.5 px-4 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors"
+              className="flex-[2] bg-warning hover:bg-warning disabled:opacity-50 disabled:cursor-not-allowed text-foreground py-2.5 px-4 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors"
             >
               {isSubmitting ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -298,39 +298,39 @@ function ConfirmDialog({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-surface-1/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       onClick={(e) => e.target === e.currentTarget && onCancel()}
     >
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl w-full max-w-md"
+        className="bg-surface-2 border border-border rounded-2xl p-6 shadow-2xl w-full max-w-md"
       >
         <div className="flex items-center gap-3 mb-4">
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-            variant === 'danger' ? 'bg-red-500/10' : 'bg-amber-500/10'
+            variant === 'danger' ? 'bg-destructive/10' : 'bg-warning/10'
           }`}>
-            <AlertCircle className={`w-5 h-5 ${variant === 'danger' ? 'text-red-400' : 'text-amber-400'}`} />
+            <AlertCircle className={`w-5 h-5 ${variant === 'danger' ? 'text-destructive' : 'text-warning'}`} />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-white">{title}</h3>
-            <p className="text-sm text-slate-400 mt-1">{message}</p>
+            <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+            <p className="text-sm text-muted-foreground mt-1">{message}</p>
           </div>
         </div>
         <div className="flex gap-3 justify-end">
           <button
             onClick={onCancel}
-            className="px-4 py-2 rounded-xl text-sm text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="px-4 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-surface-3 transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
-            className={`px-4 py-2 rounded-xl text-sm font-medium text-white transition-colors ${
+            className={`px-4 py-2 rounded-xl text-sm font-medium text-foreground transition-colors ${
               variant === 'danger'
-                ? 'bg-red-600 hover:bg-red-500'
-                : 'bg-amber-600 hover:bg-amber-500'
+                ? 'bg-destructive hover:bg-destructive'
+                : 'bg-warning hover:bg-warning'
             }`}
           >
             {confirmLabel}
@@ -378,8 +378,8 @@ export function ChallengeManage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 text-slate-400">
-        <Loader2 className="w-8 h-8 animate-spin mb-4 text-amber-500" />
+      <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
+        <Loader2 className="w-8 h-8 animate-spin mb-4 text-warning" />
         <p>Loading challenges...</p>
       </div>
     );
@@ -388,8 +388,8 @@ export function ChallengeManage() {
   if (isError) {
     return (
       <div className="flex flex-col items-center justify-center py-24">
-        <AlertCircle className="w-12 h-12 text-red-400 mb-4" />
-        <p className="text-red-400">Failed to load challenges.</p>
+        <AlertCircle className="w-12 h-12 text-destructive mb-4" />
+        <p className="text-destructive">Failed to load challenges.</p>
       </div>
     );
   }
@@ -398,12 +398,12 @@ export function ChallengeManage() {
     <div className="max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Challenges</h1>
-          <p className="text-slate-400 mt-1 text-sm">Create, edit, publish, and manage CSS challenges</p>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">Challenges</h1>
+          <p className="text-muted-foreground mt-1 text-sm">Create, edit, publish, and manage CSS challenges</p>
         </div>
         <button
           onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 bg-amber-600 hover:bg-amber-500 text-white px-5 py-2.5 rounded-xl font-medium transition-colors shadow-lg shadow-amber-500/20"
+          className="flex items-center gap-2 bg-warning hover:bg-warning text-foreground px-5 py-2.5 rounded-xl font-medium transition-colors shadow-lg shadow-warning/20"
         >
           <Plus className="w-4 h-4" />
           New Challenge
@@ -416,7 +416,7 @@ export function ChallengeManage() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="bg-red-500/10 text-red-400 p-4 rounded-xl mb-6 border border-red-500/20 text-sm"
+            className="bg-destructive/10 text-destructive p-4 rounded-xl mb-6 border border-destructive/20 text-sm"
           >
             {deleteError}
           </motion.div>
@@ -424,24 +424,24 @@ export function ChallengeManage() {
       </AnimatePresence>
 
       {challenges.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 text-slate-500">
+        <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
           <Swords className="w-12 h-12 mb-4 opacity-30" />
           <p className="text-lg font-medium">No challenges yet</p>
           <p className="text-sm mt-1">Create your first challenge to get started.</p>
         </div>
       ) : (
-        <div className="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+        <div className="bg-surface-2 border border-border rounded-2xl overflow-hidden shadow-xl">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-slate-800">
-                <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-4">Challenge</th>
-                <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 py-4">Round</th>
-                <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 py-4">Difficulty</th>
-                <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 py-4">Status</th>
-                <th className="text-right text-xs font-medium text-slate-500 uppercase tracking-wider px-6 py-4">Actions</th>
+              <tr className="border-b border-border">
+                <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-4">Challenge</th>
+                <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-4">Round</th>
+                <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-4">Difficulty</th>
+                <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-4 py-4">Status</th>
+                <th className="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-4">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/50">
+            <tbody className="divide-y divide-border">
               {challenges.map((challenge) => {
                 const cfg = difficultyConfig[challenge.difficulty];
                 return (
@@ -449,11 +449,11 @@ export function ChallengeManage() {
                     key={challenge.id}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="group hover:bg-slate-800/30 transition-colors"
+                    className="group hover:bg-surface-3 transition-colors"
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center overflow-hidden shrink-0">
+                        <div className="w-10 h-10 rounded-lg bg-surface-3 flex items-center justify-center overflow-hidden shrink-0">
                           {challenge.targetImageUrl ? (
                             <img
                               src={challenge.targetImageUrl}
@@ -465,18 +465,18 @@ export function ChallengeManage() {
                               }}
                             />
                           ) : (
-                            <ImageIcon className="w-5 h-5 text-slate-600" />
+                            <ImageIcon className="w-5 h-5 text-muted-foreground" />
                           )}
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-white">{challenge.title}</p>
+                          <p className="text-sm font-medium text-foreground">{challenge.title}</p>
                           {challenge.description && (
-                            <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{challenge.description}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{challenge.description}</p>
                           )}
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-sm text-slate-400">{challenge.roundNumber}</td>
+                    <td className="px-4 py-4 text-sm text-muted-foreground">{challenge.roundNumber}</td>
                     <td className="px-4 py-4">
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium ${cfg.bg} ${cfg.color}`}>
                         <Circle className="w-1.5 h-1.5 fill-current" />
@@ -485,7 +485,7 @@ export function ChallengeManage() {
                     </td>
                     <td className="px-4 py-4">
                       <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${
-                        challenge.published ? 'text-emerald-400' : 'text-slate-500'
+                        challenge.published ? 'text-success' : 'text-muted-foreground'
                       }`}>
                         {challenge.published ? (
                           <><Globe className="w-3.5 h-3.5" /> Published</>
@@ -501,7 +501,7 @@ export function ChallengeManage() {
                             setEditingChallenge(challenge);
                             setShowForm(true);
                           }}
-                          className="p-2 rounded-lg text-slate-500 hover:text-white hover:bg-slate-700 transition-colors"
+                          className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-4 transition-colors"
                           title="Edit"
                         >
                           <Pencil className="w-4 h-4" />
@@ -511,8 +511,8 @@ export function ChallengeManage() {
                           disabled={publishMutation.isPending}
                           className={`p-2 rounded-lg transition-colors ${
                             challenge.published
-                              ? 'text-slate-500 hover:text-amber-400 hover:bg-slate-700'
-                              : 'text-slate-500 hover:text-emerald-400 hover:bg-slate-700'
+                              ? 'text-muted-foreground hover:text-warning hover:bg-surface-4'
+                              : 'text-muted-foreground hover:text-success hover:bg-surface-4'
                           }`}
                           title={challenge.published ? 'Unpublish' : 'Publish'}
                         >
@@ -527,7 +527,7 @@ export function ChallengeManage() {
                         <button
                           onClick={() => setConfirmDeleteId(challenge.id)}
                           disabled={deleteMutation.isPending}
-                          className="p-2 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                          className="p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                           title="Delete"
                         >
                           {deleteMutation.isPending ? (
