@@ -10,6 +10,8 @@ import {
   Send,
   ImageIcon,
   Lock,
+  Play,
+  Timer,
 } from 'lucide-react';
 import { useIdentity } from '../lib/identity.js';
 import { Badge } from '@/components/ui/badge';
@@ -42,7 +44,15 @@ const difficultyConfig = {
   HARD: { variant: 'danger' as const, label: 'Hard' },
 };
 
+function formatTime(ms: number): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
 const STORAGE_PREFIX = 'csswars_draft_';
+const TIMER_PREFIX = 'csswars_timer_';
 
 function loadDraft(userId: string, challengeId: string): { html: string; css: string } | null {
   try {
@@ -51,6 +61,38 @@ function loadDraft(userId: string, challengeId: string): { html: string; css: st
     return JSON.parse(raw);
   } catch {
     return null;
+  }
+}
+
+/**
+ * Restore the challenge start timestamp (ms epoch) so the timer survives a
+ * page refresh. Returns null if absent or invalid (e.g. a future timestamp).
+ */
+function loadTimerStart(userId: string, challengeId: string): number | null {
+  try {
+    const raw = localStorage.getItem(`${TIMER_PREFIX}${userId}_${challengeId}`);
+    if (!raw) return null;
+    const ts = Number(raw);
+    if (!Number.isFinite(ts) || ts <= 0 || ts > Date.now()) return null;
+    return ts;
+  } catch {
+    return null;
+  }
+}
+
+function saveTimerStart(userId: string, challengeId: string, ts: number): void {
+  try {
+    localStorage.setItem(`${TIMER_PREFIX}${userId}_${challengeId}`, String(ts));
+  } catch {
+    /* ignore quota / privacy-mode errors */
+  }
+}
+
+function clearTimerStart(userId: string, challengeId: string): void {
+  try {
+    localStorage.removeItem(`${TIMER_PREFIX}${userId}_${challengeId}`);
+  } catch {
+    /* ignore */
   }
 }
 
@@ -72,7 +114,14 @@ export function Battle() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [rateLimitUntil, setRateLimitUntil] = useState<number>(0);
   const [targetImageError, setTargetImageError] = useState(false);
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const [resultDismissed, setResultDismissed] = useState(false);
+  const [locallySubmitted, setLocallySubmitted] = useState(false);
   const lastSubmitRef = useRef<AbortController | null>(null);
+  // Mirrors `hasSubmitted` for use inside event handlers (avoids a forward
+  // reference / stale-closure dependency on the derived value).
+  const hasSubmittedRef = useRef(false);
 
   const { data: challenge, isLoading, isError } = useQuery<Challenge>({
     queryKey: ['challenge', id],
@@ -84,7 +133,26 @@ export function Battle() {
     enabled: !!id,
   });
 
-  // Load draft from localStorage on first mount
+  /**
+   * Start the challenge timer. Idempotent: the first call wins and fixes the
+   * start timestamp; subsequent calls (including auto-start on edit) are no-ops.
+   * The timer can be started either by clicking "Start Challenge" or
+   * automatically the moment the participant edits the HTML or CSS. The start
+   * is persisted to localStorage so a page refresh doesn't reset the timer.
+   */
+  const startTimer = useCallback(() => {
+    // Once a submission exists for this challenge, the timer can never start.
+    if (hasSubmittedRef.current) return;
+    setStartedAt((prev) => {
+      if (prev !== null) return prev;
+      const ts = Date.now();
+      // identity/challenge are stable by the time the user can start
+      if (identity && challenge) saveTimerStart(identity.id, challenge.id, ts);
+      return ts;
+    });
+  }, [identity, challenge]);
+
+  // Load draft (and restore the timer start) from localStorage on first mount
   useEffect(() => {
     if (!challenge || !identity || initialized) return;
     const draft = loadDraft(identity.id, challenge.id);
@@ -92,22 +160,39 @@ export function Battle() {
       setHtmlCode(draft.html);
       setCssCode(draft.css);
     }
+    // Restore the timer so a refresh doesn't reset the participant's elapsed
+    // time. The actual solveTimeMs is recomputed from this timestamp on submit.
+    const restored = loadTimerStart(identity.id, challenge.id);
+    if (restored !== null) {
+      setStartedAt(restored);
+    }
     setInitialized(true);
   }, [challenge, identity, initialized]);
 
   const handleHtmlChange = useCallback((html: string) => {
+    startTimer();
     setHtmlCode(html);
-  }, []);
+  }, [startTimer]);
 
   const handleCssChange = useCallback((css: string) => {
+    startTimer();
     setCssCode(css);
-  }, []);
+  }, [startTimer]);
 
   // Keep the module-level store in sync with the current editor code
   // so DiffMode can send it to the Playwright render service
   useEffect(() => {
     setPreviewCode(htmlCode, cssCode);
   }, [htmlCode, cssCode]);
+
+  // Tick the elapsed timer once the challenge has started.
+  useEffect(() => {
+    if (startedAt === null) return;
+    const id = setInterval(() => {
+      setElapsedMs(Date.now() - startedAt);
+    }, 250);
+    return () => clearInterval(id);
+  }, [startedAt]);
 
   // Fetch competition state for lock check
   const { data: competitionState } = useQuery<{ locked: boolean; status: string; unlockedRound: number | null }>({
@@ -124,6 +209,62 @@ export function Battle() {
   const isGloballyLocked = competitionState?.locked ?? true;
   const isWrongRound = !competitionState?.unlockedRound || challenge?.roundNumber !== competitionState.unlockedRound;
   const isLocked = isGloballyLocked || isWrongRound;
+
+  // Fetch this user's existing submissions for the challenge. A participant
+  // may only submit once, so if one already exists we must NOT let them start
+  // (or restart) the timer, and we surface the prior result instead.
+  const { data: existingSubmissions } = useQuery<Array<{
+    id: string;
+    score: number | null;
+    codeLength: number;
+    isBest: boolean;
+    screenshotUrl: string | null;
+    submittedAt: string;
+  }>>({
+    queryKey: ['submissions-mine', identity?.id, id],
+    queryFn: async () => {
+      if (!identity || !id) return [];
+      const params = new URLSearchParams({ userId: identity.id, challengeId: id });
+      const res = await fetch(`/api/submissions/mine?${params.toString()}`);
+      if (!res.ok) throw new Error('Failed to fetch submissions');
+      return res.json();
+    },
+    enabled: !!identity && !!id,
+    staleTime: 30_000,
+  });
+
+  const hasSubmitted =
+    locallySubmitted || (existingSubmissions?.length ?? 0) > 0;
+
+  // Keep the ref in sync so startTimer() (called from editor keystrokes /
+  // the Start button) sees the latest value without being in its deps.
+  useEffect(() => {
+    hasSubmittedRef.current = hasSubmitted;
+  }, [hasSubmitted]);
+
+  // Re-show the prior submission result on (re)load so a completed challenge
+  // doesn't look like a fresh, re-attemptable one. Once dismissed, stay closed.
+  useEffect(() => {
+    if (hasSubmitted && !submitResult && !resultDismissed && existingSubmissions?.length) {
+      const s = existingSubmissions[0];
+      setSubmitResult({
+        id: s.id,
+        score: s.score,
+        screenshotUrl: s.screenshotUrl,
+        codeLength: s.codeLength,
+        isBest: s.isBest,
+        rank: null,
+        pixelScore: null,
+        byteScore: null,
+        timeScore: null,
+      });
+    }
+  }, [hasSubmitted, submitResult, resultDismissed, existingSubmissions]);
+
+  const handleCloseResult = useCallback(() => {
+    setSubmitResult(null);
+    setResultDismissed(true);
+  }, []);
 
   // Handle submission
   const handleSubmit = useCallback(async () => {
@@ -152,6 +293,7 @@ export function Battle() {
           challengeId: challenge.id,
           htmlCode,
           cssCode,
+          solveTimeMs: startedAt ? Date.now() - startedAt : 0,
         }),
         signal: controller.signal,
       });
@@ -162,6 +304,9 @@ export function Battle() {
         setSubmitError(data.error ?? `Submission failed (${res.status})`);
       } else {
         setSubmitResult(data as SubmissionResultData);
+        // One submission per challenge — the timer is no longer needed.
+        setLocallySubmitted(true);
+        clearTimerStart(identity.id, challenge.id);
       }
     } catch (err: any) {
       if (err.name === 'AbortError') return;
@@ -172,7 +317,8 @@ export function Battle() {
     }
   }, [identity, challenge, htmlCode, cssCode, isSubmitting, rateLimitUntil]);
 
-  const canSubmit = !isSubmitting && !isLocked && !!identity && Date.now() >= rateLimitUntil;
+  const canSubmit =
+    !isSubmitting && !isLocked && !hasSubmitted && !!identity && startedAt !== null && Date.now() >= rateLimitUntil;
 
   if (isLoading) {
     return (
@@ -238,6 +384,34 @@ export function Battle() {
                 <span className="text-xs text-muted-foreground">Round {challenge.roundNumber} is locked</span>
               </div>
             )}
+
+            {/* ─── Challenge timer: Start button OR live elapsed chip ─── */}
+            {hasSubmitted ? (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-success/10 border border-success/20 text-success">
+                <Send className="w-3.5 h-3.5" />
+                <span className="text-xs font-medium">Submitted</span>
+              </div>
+            ) : (
+              !isLocked &&
+              (startedAt === null ? (
+                <button
+                  onClick={startTimer}
+                  className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium bg-surface-3 border border-border text-foreground hover:bg-surface-4 hover:border-brand/40 transition-all active:scale-[0.98]"
+                >
+                  <Play className="w-4 h-4 text-brand" />
+                  Start Challenge
+                </button>
+              ) : (
+                <div
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface-3 border border-border text-foreground font-mono text-sm tabular-nums"
+                  title="Time since you started this challenge"
+                >
+                  <Timer className="w-3.5 h-3.5 text-brand" />
+                  {formatTime(elapsedMs)}
+                </div>
+              ))
+            )}
+
             <button
               onClick={handleSubmit}
               disabled={!canSubmit}
@@ -347,11 +521,11 @@ export function Battle() {
               <AnimatePresence>
                 {submitResult && (
                   <div className="absolute inset-0 z-30 overflow-y-auto">
-                    <SubmissionResult
-                      result={submitResult}
-                      targetImageUrl={challenge.targetImageUrl}
-                      onClose={() => setSubmitResult(null)}
-                    />
+                  <SubmissionResult
+                    result={submitResult}
+                    targetImageUrl={challenge.targetImageUrl}
+                    onClose={handleCloseResult}
+                  />
                   </div>
                 )}
               </AnimatePresence>

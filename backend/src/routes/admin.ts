@@ -4,6 +4,7 @@ import { adminCheck } from '../middleware/adminCheck.js';
 import { Prisma } from '@prisma/client';
 import { sanitizeSubmission } from '../rendering/sanitize.js';
 import { findBestSubmission } from '../scoring/tiebreak.js';
+import { computeCompositeScore } from '../scoring/composite.js';
 import type { RenderServiceResponse } from '../services/submission.js';
 
 const renderPort = process.env.RENDER_PORT ?? '4001';
@@ -301,14 +302,34 @@ adminRouter.post('/submissions/:id/rejudge', async (req: Request, res: Response)
       return;
     }
 
+    // Compute the composite score (0.75 pixel + 0.15 byte + 0.10 time) exactly
+    // like a fresh submission, using the ORIGINAL solve time so rejudge
+    // reproduces the participant's real score (only the pixel match can change
+    // if the target image was updated).
+    let compositeScore: number | null = null;
+    let pixelScore: number | null = null;
+    let byteScore: number | null = null;
+    let timeScore: number | null = null;
+
+    if (renderResult.success && typeof renderResult.score === 'number') {
+      const solveTimeMs = submission.solveTimeMs ?? 0;
+      const composite = computeCompositeScore({
+        pixelScore: renderResult.score,
+        codeLength: submission.codeLength,
+        solveTimeMs,
+      });
+      compositeScore = composite.score;
+      pixelScore = composite.pixelComponent;
+      byteScore = composite.byteComponent;
+      timeScore = composite.timeComponent;
+    }
+
     // Update the submission in-place (properly typed inline)
     const updated = await prisma.submission.update({
       where: { id },
       data: {
         rejudgedAt: new Date(),
-        ...(renderResult.success && renderResult.score !== undefined && renderResult.score !== null
-          ? { score: renderResult.score }
-          : {}),
+        ...(compositeScore !== null ? { score: compositeScore } : {}),
         ...(renderResult.success && renderResult.screenshotUrl
           ? { screenshotUrl: renderResult.screenshotUrl }
           : {}),
@@ -357,6 +378,9 @@ adminRouter.post('/submissions/:id/rejudge', async (req: Request, res: Response)
       message: 'Rejudge complete',
       id: updated.id,
       score: updated.score ? Number(updated.score) : null,
+      pixelScore,
+      byteScore,
+      timeScore,
       screenshotUrl: updated.screenshotUrl,
       isBest: bestId === updated.id,
       rejudged: true,

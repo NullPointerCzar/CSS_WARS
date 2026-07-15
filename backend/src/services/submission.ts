@@ -12,6 +12,7 @@
 import { prisma } from '../db.js';
 import { validatePayload, sanitizeSubmission } from '../rendering/sanitize.js';
 import { findBestSubmission } from '../scoring/tiebreak.js';
+import { computeCompositeScore } from '../scoring/composite.js';
 import { Prisma } from '@prisma/client';
 import { getRenderServiceStatus } from '../renderStatus.js';
 import path from 'path';
@@ -34,6 +35,8 @@ export interface SubmissionInput {
   cssCode: string;
   userId: string;
   challengeId: string;
+  /** Solve time in ms, from challenge start to submit (client-measured). */
+  solveTimeMs?: number;
 }
 
 export interface SubmissionResult {
@@ -43,6 +46,10 @@ export interface SubmissionResult {
   codeLength: number;
   isBest: boolean;
   rank: number | null;
+  /** Per-component breakdown of the composite score (each 0–100). */
+  pixelScore: number | null;
+  byteScore: number | null;
+  timeScore: number | null;
   error?: string;
 }
 
@@ -213,6 +220,10 @@ export async function processSubmission(
       htmlCode: sanitizedHtml,
       cssCode: sanitizedCss,
       codeLength,
+      solveTimeMs:
+        typeof input.solveTimeMs === 'number' && Number.isFinite(input.solveTimeMs) && input.solveTimeMs >= 0
+          ? Math.round(input.solveTimeMs)
+          : null,
       score: null,
       screenshotUrl: null,
       isBest: false,
@@ -266,15 +277,31 @@ export async function processSubmission(
     }
   }
 
-  // 8. Update DB record with render results
+  // 8. Update DB record with render results + compute the composite score.
   const updateData: {
     score?: number;
     screenshotUrl?: string;
   } = {};
 
-  if (renderResult.success && renderResult.score !== undefined && renderResult.score !== null) {
-    updateData.score = renderResult.score;
+  let pixelScore: number | null = null;
+  if (renderResult.success && typeof renderResult.score === 'number') {
+    pixelScore = renderResult.score;
   }
+
+  // Solve time is client-measured (challenge start → submit). Clamp to a
+  // sane non-negative value; if missing/invalid, treat as 0.
+  const solveTimeMs =
+    typeof input.solveTimeMs === 'number' && Number.isFinite(input.solveTimeMs) && input.solveTimeMs >= 0
+      ? input.solveTimeMs
+      : 0;
+
+  // Composite score: 0.75 pixel match + 0.15 byte efficiency + 0.10 speed.
+  let composite = null;
+  if (pixelScore !== null) {
+    composite = computeCompositeScore({ pixelScore, codeLength, solveTimeMs });
+    updateData.score = composite.score;
+  }
+
   if (renderResult.success && renderResult.screenshotUrl) {
     updateData.screenshotUrl = renderResult.screenshotUrl;
   }
@@ -346,6 +373,9 @@ export async function processSubmission(
     codeLength,
     isBest: bestId === submission.id,
     rank,
+    pixelScore: composite?.pixelComponent ?? null,
+    byteScore: composite?.byteComponent ?? null,
+    timeScore: composite?.timeComponent ?? null,
     error: renderResult.success ? undefined : renderResult.error,
   };
 }

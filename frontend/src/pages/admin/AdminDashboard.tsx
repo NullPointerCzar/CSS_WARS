@@ -206,7 +206,7 @@ function CompetitionControls({
 
   return (
     <>
-      <Card>
+      <Card className="p-5">
         <div className="flex items-center gap-3 mb-5">
           <div className="w-9 h-9 rounded-md border border-border bg-surface-3 flex items-center justify-center">
             <Swords className="w-4 h-4 text-brand" />

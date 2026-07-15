@@ -1,4 +1,4 @@
-import { Link, NavLink, Route, Routes, useLocation } from 'react-router-dom';
+import { Link, NavLink, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useIdentity, clearIdentity } from './lib/identity.js';
 import { cn } from './lib/utils.js';
@@ -15,6 +15,14 @@ import { Leaderboard } from './pages/Leaderboard.js';
 import { Dashboard } from './pages/Dashboard.js';
 
 type Health = { status: string; service: string; uptime: number };
+
+// Wrapper that remounts Battle per challenge id so all per-challenge state
+// (draft, timer, submission result) resets cleanly when navigating between
+// challenges — without it, React reuses the same instance across :id changes.
+function BattleRoute() {
+  const { id } = useParams<{ id: string }>();
+  return <Battle key={id} />;
+}
 
 async function fetchHealth(): Promise<Health> {
   const res = await fetch('/api/health');
@@ -100,7 +108,7 @@ function MainLayout({ identity }: { identity: NonNullable<ReturnType<typeof useI
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/challenges" element={<ChallengeList />} />
-          <Route path="/challenges/:id" element={<Battle />} />
+          <Route path="/challenges/:id" element={<BattleRoute />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route
             path="*"

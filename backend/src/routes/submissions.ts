@@ -54,7 +54,7 @@ submissionsRouter.post(
   '/',
   async (req: Request, res: Response): Promise<void> => {
     try {
-      const { htmlCode, cssCode, userId, challengeId } = req.body;
+      const { htmlCode, cssCode, userId, challengeId, solveTimeMs } = req.body;
 
       // Check rate limit before processing
       if (!userId) {
@@ -97,6 +97,8 @@ submissionsRouter.post(
         cssCode,
         userId,
         challengeId,
+        solveTimeMs:
+          typeof solveTimeMs === 'number' ? solveTimeMs : undefined,
       });
 
       res.status(201).json(result);

@@ -9,6 +9,23 @@ import { competitionRouter } from './routes/competition.js';
 import { leaderboardRouter, adminLeaderboardRouter } from './routes/leaderboard.js';
 import { getRenderServiceStatus } from './renderStatus.js';
 
+// Loopback hosts are always safe to allow (local dev / event machine).
+function isLoopback(hostname: string): boolean {
+  if (hostname === 'localhost' || hostname === '::1' || hostname === '[::1]')
+    return true;
+  // IPv4 loopback range 127.0.0.0/8 (covers 127.0.0.1, 127.0.2.3, etc.)
+  return /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname);
+}
+
+function originAllowed(origin: string, allowedOrigins: string[]): boolean {
+  if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) return true;
+  try {
+    return isLoopback(new URL(origin).hostname);
+  } catch {
+    return false;
+  }
+}
+
 export function createApp(): Express {
   const app = express();
 
@@ -22,7 +39,7 @@ export function createApp(): Express {
       origin: (origin, callback) => {
         // Same-origin / curl / no Origin header → allow.
         if (!origin) return callback(null, true);
-        if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+        if (originAllowed(origin, allowedOrigins)) {
           return callback(null, true);
         }
         return callback(new Error(`CORS: origin ${origin} not allowed`));
@@ -40,10 +57,7 @@ export function createApp(): Express {
     '/uploads',
     (req, res, next) => {
       const origin = req.headers.origin;
-      if (
-        origin &&
-        (allowedOrigins.includes('*') || allowedOrigins.includes(origin))
-      ) {
+      if (origin && originAllowed(origin, allowedOrigins)) {
         res.setHeader('Access-Control-Allow-Origin', origin);
         res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
       }
@@ -55,10 +69,7 @@ export function createApp(): Express {
     '/targets',
     (req, res, next) => {
       const origin = req.headers.origin;
-      if (
-        origin &&
-        (allowedOrigins.includes('*') || allowedOrigins.includes(origin))
-      ) {
+      if (origin && originAllowed(origin, allowedOrigins)) {
         res.setHeader('Access-Control-Allow-Origin', origin);
         res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
       }

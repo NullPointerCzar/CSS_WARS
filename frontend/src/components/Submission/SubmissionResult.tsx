@@ -12,6 +12,10 @@ export interface SubmissionResultData {
   codeLength: number;
   isBest: boolean;
   rank: number | null;
+  /** Per-component breakdown of the composite score (each 0–100). */
+  pixelScore: number | null;
+  byteScore: number | null;
+  timeScore: number | null;
   error?: string;
 }
 
@@ -72,6 +76,41 @@ function ScoreCircle({ score }: { score: number | null }) {
           {clamped.toFixed(1)}
         </span>
         <span className="text-[10px] text-muted-foreground font-medium">/ 100</span>
+      </div>
+    </div>
+  );
+}
+
+function BreakdownRow({
+  label,
+  weight,
+  value,
+}: {
+  label: string;
+  weight: string;
+  value: number | null;
+}) {
+  const v = value === null ? 0 : Math.max(0, Math.min(100, value));
+  const color =
+    v >= 90
+      ? 'bg-success'
+      : v >= 75
+        ? 'bg-accent'
+        : v >= 50
+          ? 'bg-warning'
+          : 'bg-destructive';
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className="w-24 shrink-0">
+        <span className="text-xs text-foreground font-medium">{label}</span>
+        <span className="text-[10px] text-muted-foreground ml-1">{weight}</span>
+      </div>
+      <div className="flex-1 h-2 rounded-full bg-surface-4 overflow-hidden">
+        <div className={`h-full ${color}`} style={{ width: `${v}%` }} />
+      </div>
+      <div className="w-10 shrink-0 text-right font-mono text-xs text-muted-foreground tabular-nums">
+        {value === null ? '—' : value.toFixed(1)}
       </div>
     </div>
   );
@@ -145,6 +184,20 @@ export function SubmissionResult({
               <span className="text-xs text-muted-foreground font-medium">Bytes</span>
             </div>
           </div>
+
+          {/* Score breakdown */}
+          {result.pixelScore !== null && (
+            <div className="rounded-xl border border-border bg-surface-1 p-3">
+              <h4 className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                Score Breakdown
+              </h4>
+              <div className="space-y-2">
+                <BreakdownRow label="Pixel match" weight="75%" value={result.pixelScore} />
+                <BreakdownRow label="Code size" weight="15%" value={result.byteScore} />
+                <BreakdownRow label="Speed" weight="10%" value={result.timeScore} />
+              </div>
+            </div>
+          )}
 
           {/* Side-by-side screenshots */}
           <div>

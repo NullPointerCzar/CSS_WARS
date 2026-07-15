@@ -85,6 +85,7 @@ model Submission {
   htmlCode    String   @db.Text
   cssCode     String   @db.Text
   codeLength  Int      /// Bytes, computed server-side at submission time
+  solveTimeMs Int?     /// Solve time in ms (challenge start → submit), used by composite scoring
 
   score         Decimal? @db.Decimal(5, 2) /// Similarity %, nullable until scored
   screenshotUrl String?

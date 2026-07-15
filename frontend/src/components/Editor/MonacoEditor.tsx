@@ -1,8 +1,28 @@
-import { useRef, useCallback, useEffect } from 'react';
+import { useRef, useCallback, useEffect, useState } from 'react';
 import Editor, { type OnMount } from '@monaco-editor/react';
 import { Loader2 } from 'lucide-react';
+import { initMonaco } from '@/lib/monacoSetup.js';
 
 const STORAGE_PREFIX = 'csswars_draft_';
+
+// Shared editor options — tuned for strong HTML/CSS autocompletion.
+const EDITOR_OPTIONS = {
+  minimap: { enabled: false },
+  fontSize: 13,
+  lineNumbers: 'on' as const,
+  scrollBeyondLastLine: false,
+  wordWrap: 'on' as const,
+  tabSize: 2,
+  automaticLayout: true,
+  padding: { top: 12 },
+  quickSuggestions: { other: true, comments: false, strings: true },
+  suggestOnTriggerCharacters: true,
+  tabCompletion: 'on' as const,
+  wordBasedSuggestions: 'matchingDocuments' as const,
+  acceptSuggestionOnCommitCharacter: true,
+  snippetSuggestions: 'inline' as const,
+  suggest: { showWords: true },
+};
 
 interface MonacoEditorProps {
   challengeId: string;
@@ -26,6 +46,23 @@ export function MonacoEditor({
   const htmlTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cssTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const storageKey = `${STORAGE_PREFIX}${userId}_${challengeId}`;
+
+  // Monaco is bundled locally and loaded lazily so it doesn't bloat the
+  // initial bundle. Wait for it before mounting the editors.
+  const [editorReady, setEditorReady] = useState(false);
+  useEffect(() => {
+    let active = true;
+    initMonaco()
+      .then(() => {
+        if (active) setEditorReady(true);
+      })
+      .catch(() => {
+        if (active) setEditorReady(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Use refs to avoid stale closures in debounce handlers
   const htmlRef = useRef(htmlCode);
@@ -89,6 +126,14 @@ export function MonacoEditor({
     cssEditorRef.current = editor;
   };
 
+  if (!editorReady) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-full gap-3">
       {/* HTML Editor */}
@@ -105,16 +150,7 @@ export function MonacoEditor({
             onChange={handleHtmlChange}
             onMount={handleHtmlMount}
             theme="vs-dark"
-            options={{
-              minimap: { enabled: false },
-              fontSize: 13,
-              lineNumbers: 'on',
-              scrollBeyondLastLine: false,
-              wordWrap: 'on',
-              tabSize: 2,
-              automaticLayout: true,
-              padding: { top: 12 },
-            }}
+            options={EDITOR_OPTIONS}
             loading={
               <div className="flex items-center justify-center h-full bg-surface-1">
                 <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
@@ -138,16 +174,7 @@ export function MonacoEditor({
             onChange={handleCssChange}
             onMount={handleCssMount}
             theme="vs-dark"
-            options={{
-              minimap: { enabled: false },
-              fontSize: 13,
-              lineNumbers: 'on',
-              scrollBeyondLastLine: false,
-              wordWrap: 'on',
-              tabSize: 2,
-              automaticLayout: true,
-              padding: { top: 12 },
-            }}
+            options={EDITOR_OPTIONS}
             loading={
               <div className="flex items-center justify-center h-full bg-surface-1">
                 <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
