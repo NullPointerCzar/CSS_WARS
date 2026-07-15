@@ -53,11 +53,13 @@ function MainLayout({ identity }: { identity: NonNullable<ReturnType<typeof useI
     <div className="min-h-full bg-surface-1 text-foreground">
       <header className="border-b border-border px-6 py-3.5 flex items-center justify-between bg-surface-1/80 backdrop-blur-md sticky top-0 z-40">
         <Link to="/" className="flex items-center gap-2.5 group">
-          <span className="w-8 h-8 rounded-lg bg-brand text-brand-foreground flex items-center justify-center text-xs font-bold tracking-tight shadow-soft-md ring-1 ring-brand/30 transition-transform group-hover:scale-[1.03]">
-            CSS
-          </span>
+          <img
+            src="/ncei-club.png"
+            alt="NCEI Club"
+            className="h-8 w-8 rounded-lg bg-surface-2 p-1 ring-1 ring-border object-contain transition-transform group-hover:scale-[1.03]"
+          />
           <span className="text-lg font-bold tracking-tight text-foreground">
-            WARS
+            CSS WARS
           </span>
         </Link>
 

@@ -55,10 +55,10 @@ export function AppAdminSidebar({
       >
         <button
           onClick={onToggle}
-          className="flex aspect-square size-9 shrink-0 items-center justify-center rounded-lg bg-brand text-brand-foreground text-sm font-bold ring-1 ring-brand/30 transition hover:brightness-110"
+          className="flex aspect-square size-9 shrink-0 items-center justify-center rounded-lg bg-surface-2 p-1 ring-1 ring-border transition hover:brightness-110"
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
-          C
+          <img src="/ncei-club.png" alt="NCEI Club" className="h-full w-full object-contain" />
         </button>
         {!collapsed && (
           <div className="grid flex-1 text-left leading-tight">
