@@ -22,8 +22,8 @@ export interface SubmissionResultData {
 function ScoreCircle({ score }: { score: number | null }) {
   if (score === null) {
     return (
-      <div className="w-24 h-24 rounded-full bg-slate-800 border-4 border-slate-700 flex items-center justify-center">
-        <span className="text-lg font-bold text-slate-500">—</span>
+      <div className="w-24 h-24 rounded-full bg-surface-3 border-4 border-border flex items-center justify-center">
+        <span className="text-lg font-bold text-muted-foreground">—</span>
       </div>
     );
   }
@@ -35,12 +35,12 @@ function ScoreCircle({ score }: { score: number | null }) {
   // Color based on score tier
   const color =
     clamped >= 90
-      ? 'text-emerald-400 stroke-emerald-400'
+      ? 'text-success stroke-success'
       : clamped >= 75
-        ? 'text-blue-400 stroke-blue-400'
+        ? 'text-accent stroke-accent'
         : clamped >= 50
-          ? 'text-amber-400 stroke-amber-400'
-          : 'text-red-400 stroke-red-400';
+          ? 'text-warning stroke-warning'
+          : 'text-destructive stroke-destructive';
 
   return (
     <div className="relative w-24 h-24 flex items-center justify-center">
@@ -51,7 +51,7 @@ function ScoreCircle({ score }: { score: number | null }) {
           r="38"
           fill="none"
           strokeWidth="5"
-          className="stroke-slate-700"
+          className="stroke-surface-4"
         />
         <motion.circle
           cx="44"
@@ -71,7 +71,7 @@ function ScoreCircle({ score }: { score: number | null }) {
         <span className={`text-2xl font-bold ${color.replace('stroke-', 'text-')}`}>
           {clamped.toFixed(1)}
         </span>
-        <span className="text-[10px] text-slate-500 font-medium">/ 100</span>
+        <span className="text-[10px] text-muted-foreground font-medium">/ 100</span>
       </div>
     </div>
   );
@@ -96,19 +96,19 @@ export function SubmissionResult({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.3 }}
-      className="bg-slate-900/95 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6 shadow-2xl"
+      className="bg-surface-2 backdrop-blur-sm border border-border rounded-2xl p-6 shadow-2xl"
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
-            <Trophy className="w-4 h-4 text-white" />
+          <div className="w-8 h-8 rounded-lg bg-brand flex items-center justify-center shadow-lg shadow-brand/20">
+            <Trophy className="w-4 h-4 text-brand-foreground" />
           </div>
-          <h3 className="text-lg font-semibold text-white">Submission Result</h3>
+          <h3 className="text-lg font-semibold text-foreground">Submission Result</h3>
         </div>
         <button
           onClick={onClose}
-          className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-slate-800 transition-colors"
+          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-3 transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
@@ -117,9 +117,9 @@ export function SubmissionResult({
       {result.error && !result.score ? (
         /* Error state — rendering failed */
         <div className="flex flex-col items-center gap-3 py-6">
-          <AlertCircle className="w-10 h-10 text-red-400" />
-          <p className="text-red-400 text-sm text-center">{result.error}</p>
-          <p className="text-xs text-slate-500">Try adjusting your code and submitting again.</p>
+          <AlertCircle className="w-10 h-10 text-destructive" />
+          <p className="text-destructive text-sm text-center">{result.error}</p>
+          <p className="text-xs text-muted-foreground">Try adjusting your code and submitting again.</p>
         </div>
       ) : (
         /* Success state — show score + side-by-side screenshots */
@@ -128,38 +128,38 @@ export function SubmissionResult({
           <div className="flex items-center justify-center gap-8">
             <div className="flex flex-col items-center gap-1">
               <ScoreCircle score={result.score} />
-              <span className="text-xs text-slate-500 font-medium">Similarity</span>
+              <span className="text-xs text-muted-foreground font-medium">Similarity</span>
             </div>
 
             <div className="flex flex-col items-center gap-1">
-              <div className="text-3xl font-bold text-white">
+              <div className="text-3xl font-bold text-foreground">
                 {result.rank !== null ? `#${result.rank}` : '—'}
               </div>
-              <span className="text-xs text-slate-500 font-medium">Rank</span>
+              <span className="text-xs text-muted-foreground font-medium">Rank</span>
             </div>
 
             <div className="flex flex-col items-center gap-1">
-              <div className="text-3xl font-bold text-slate-300">
+              <div className="text-3xl font-bold text-foreground">
                 {result.codeLength.toLocaleString()}
               </div>
-              <span className="text-xs text-slate-500 font-medium">Bytes</span>
+              <span className="text-xs text-muted-foreground font-medium">Bytes</span>
             </div>
           </div>
 
           {/* Side-by-side screenshots */}
           <div>
-            <h4 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-3">
+            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
               Your Result vs. Target
             </h4>
             <div className="grid grid-cols-2 gap-3">
               {/* Screenshot of submission */}
-              <div className="rounded-xl overflow-hidden border border-slate-700/50 bg-slate-950">
-                <div className="bg-slate-800/50 px-3 py-1.5 border-b border-slate-700/50">
-                  <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
+              <div className="rounded-xl overflow-hidden border border-border bg-surface-1">
+                <div className="bg-surface-3 px-3 py-1.5 border-b border-border">
+                  <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
                     Your Code
                   </span>
                 </div>
-                <div className="aspect-[4/3] bg-white flex items-center justify-center">
+                <div className="aspect-[4/3] bg-surface-1 flex items-center justify-center">
                   {result.screenshotUrl ? (
                     <img
                       src={result.screenshotUrl}
@@ -167,7 +167,7 @@ export function SubmissionResult({
                       className="w-full h-full object-contain"
                     />
                   ) : (
-                    <div className="flex items-center gap-2 text-slate-400">
+                    <div className="flex items-center gap-2 text-muted-foreground">
                       <Loader2 className="w-4 h-4 animate-spin" />
                       <span className="text-xs">No screenshot</span>
                     </div>
@@ -176,13 +176,13 @@ export function SubmissionResult({
               </div>
 
               {/* Target image */}
-              <div className="rounded-xl overflow-hidden border border-slate-700/50 bg-slate-950">
-                <div className="bg-slate-800/50 px-3 py-1.5 border-b border-slate-700/50">
-                  <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
+              <div className="rounded-xl overflow-hidden border border-border bg-surface-1">
+                <div className="bg-surface-3 px-3 py-1.5 border-b border-border">
+                  <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
                     Target
                   </span>
                 </div>
-                <div className="aspect-[4/3] bg-white flex items-center justify-center">
+                <div className="aspect-[4/3] bg-surface-1 flex items-center justify-center">
                   <img
                     src={targetImageUrl}
                     alt="Target image"
@@ -194,9 +194,9 @@ export function SubmissionResult({
           </div>
 
           {result.isBest && result.score !== null && (
-            <div className="flex items-center justify-center gap-2 py-2 px-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
-              <Trophy className="w-4 h-4 text-emerald-400" />
-              <span className="text-sm font-medium text-emerald-400">
+            <div className="flex items-center justify-center gap-2 py-2 px-4 bg-success/10 border border-success/20 rounded-xl">
+              <Trophy className="w-4 h-4 text-success" />
+              <span className="text-sm font-medium text-success">
                 New personal best!
               </span>
             </div>

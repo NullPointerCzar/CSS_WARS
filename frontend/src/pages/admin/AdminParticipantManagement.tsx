@@ -74,12 +74,12 @@ function SingleAddForm({
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="Enter participant name..."
-        className="flex-1 bg-slate-950/50 border border-slate-800 text-white rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all placeholder:text-slate-600"
+        className="flex-1 bg-surface-1 border border-border text-foreground rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-success transition-all placeholder:text-muted-foreground"
       />
       <button
         type="submit"
         disabled={addMutation.isPending || !name.trim()}
-        className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium transition-colors whitespace-nowrap"
+        className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-success hover:bg-success disabled:opacity-50 disabled:cursor-not-allowed text-foreground text-sm font-medium transition-colors whitespace-nowrap"
       >
         {addMutation.isPending ? (
           <Loader2 className="w-4 h-4 animate-spin" />
@@ -94,7 +94,7 @@ function SingleAddForm({
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0 }}
-            className="text-xs text-red-400"
+            className="text-xs text-destructive"
           >
             {error}
           </motion.p>
@@ -147,18 +147,18 @@ function BulkAddForm({ onAdded }: { onAdded: () => void }) {
     .filter((n) => n.length > 0).length;
 
   return (
-    <div className="border border-slate-700/50 rounded-xl overflow-hidden">
+    <div className="border border-border rounded-xl overflow-hidden">
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-4 py-3 bg-slate-800/30 hover:bg-slate-800/50 transition-colors text-left"
+        className="w-full flex items-center justify-between px-4 py-3 bg-surface-3 hover:bg-surface-4 transition-colors text-left"
       >
-        <span className="text-sm font-medium text-slate-300 flex items-center gap-2">
-          <Upload className="w-4 h-4 text-emerald-400" />
+        <span className="text-sm font-medium text-foreground flex items-center gap-2">
+          <Upload className="w-4 h-4 text-success" />
           Bulk add names
         </span>
         <ChevronDown
-          className={`w-4 h-4 text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          className={`w-4 h-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`}
         />
       </button>
 
@@ -170,22 +170,22 @@ function BulkAddForm({ onAdded }: { onAdded: () => void }) {
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <form onSubmit={handleSubmit} className="p-4 space-y-3 border-t border-slate-700/50">
+            <form onSubmit={handleSubmit} className="p-4 space-y-3 border-t border-border">
               <textarea
                 value={namesText}
                 onChange={(e) => setNamesText(e.target.value)}
                 placeholder={`Paste names here, one per line:\n\nAlice\nBob\nCharlie`}
                 rows={6}
-                className="w-full bg-slate-950/50 border border-slate-800 text-white rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all placeholder:text-slate-600 resize-none font-mono"
+                className="w-full bg-surface-1 border border-border text-foreground rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-success transition-all placeholder:text-muted-foreground resize-none font-mono"
               />
               <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-muted-foreground">
                   {nameCount > 0 ? `${nameCount} name${nameCount !== 1 ? 's' : ''} detected` : 'Enter names above'}
                 </span>
                 <button
                   type="submit"
                   disabled={addMutation.isPending || nameCount === 0}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium transition-colors"
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-success hover:bg-success disabled:opacity-50 disabled:cursor-not-allowed text-foreground text-sm font-medium transition-colors"
                 >
                   {addMutation.isPending ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -201,7 +201,7 @@ function BulkAddForm({ onAdded }: { onAdded: () => void }) {
                     initial={{ opacity: 0, y: -5 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
-                    className="text-xs text-red-400"
+                    className="text-xs text-destructive"
                   >
                     {error}
                   </motion.p>
@@ -277,7 +277,7 @@ function ParticipantRow({
     <motion.div
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="relative flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-800/20 hover:bg-slate-800/40 transition-colors group border border-slate-800/30"
+      className="relative flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-3 hover:bg-surface-4 transition-colors group border border-border"
     >
       {/* Edit or Name */}
       <div className="flex-1 min-w-0">
@@ -287,7 +287,7 @@ function ParticipantRow({
               type="text"
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
-              className="bg-slate-950/70 border border-slate-700 text-white rounded-lg py-1 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 w-full max-w-xs"
+              className="bg-surface-1 border border-border text-foreground rounded-lg py-1 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-success w-full max-w-xs"
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && editName.trim()) editMutation.mutate(editName);
@@ -297,7 +297,7 @@ function ParticipantRow({
             <button
               onClick={() => editMutation.mutate(editName)}
               disabled={editMutation.isPending || !editName.trim()}
-              className="p-1 rounded text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+              className="p-1 rounded text-success hover:bg-success/20 transition-colors"
             >
               <Check className="w-4 h-4" />
             </button>
@@ -306,22 +306,22 @@ function ParticipantRow({
                 setIsEditing(false);
                 setEditName(participant.name);
               }}
-              className="p-1 rounded text-slate-500 hover:bg-slate-700 transition-colors"
+              className="p-1 rounded text-muted-foreground hover:bg-surface-4 transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
         ) : (
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-white truncate">{participant.name}</span>
+            <span className="text-sm font-medium text-foreground truncate">{participant.name}</span>
             {participant.hasPin && (
-              <span className="text-[10px] font-medium text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-md">PIN</span>
+              <span className="text-[10px] font-medium text-warning bg-warning/10 px-1.5 py-0.5 rounded-md">PIN</span>
             )}
             {participant.role === 'ADMIN' && (
-              <span className="text-[10px] font-medium text-purple-500 bg-purple-500/10 px-1.5 py-0.5 rounded-md">ADMIN</span>
+              <span className="text-[10px] font-medium text-brand bg-brand/10 px-1.5 py-0.5 rounded-md">ADMIN</span>
             )}
             {participant.submissionCount > 0 && (
-              <span className="text-[10px] font-medium text-slate-500 bg-slate-500/10 px-1.5 py-0.5 rounded-md">
+              <span className="text-[10px] font-medium text-muted-foreground bg-muted-foreground/10 px-1.5 py-0.5 rounded-md">
                 {participant.submissionCount} sub
               </span>
             )}
@@ -338,21 +338,21 @@ function ParticipantRow({
                 setShowPinInput(!showPinInput);
                 setPinValue('');
               }}
-              className="p-1.5 rounded-lg text-slate-500 hover:text-amber-400 hover:bg-amber-500/10 transition-colors"
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-warning hover:bg-warning/10 transition-colors"
               title={participant.hasPin ? 'Change PIN' : 'Set PIN'}
             >
               <KeyRound className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => setIsEditing(true)}
-              className="p-1.5 rounded-lg text-slate-500 hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-accent hover:bg-accent/10 transition-colors"
               title="Edit name"
             >
               <Pencil className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => setConfirmDelete(true)}
-              className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
               title="Delete"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -376,7 +376,7 @@ function ParticipantRow({
               value={pinValue}
               onChange={(e) => setPinValue(e.target.value.replace(/\D/g, ''))}
               placeholder="PIN"
-              className="w-20 bg-slate-950/70 border border-slate-700 text-white rounded-lg py-1 px-2 text-sm text-center font-mono focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-20 bg-surface-1 border border-border text-foreground rounded-lg py-1 px-2 text-sm text-center font-mono focus:outline-none focus:ring-2 focus:ring-warning"
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && pinValue.length >= 4) pinMutation.mutate(pinValue);
@@ -386,7 +386,7 @@ function ParticipantRow({
             <button
               onClick={() => pinMutation.mutate(pinValue)}
               disabled={pinMutation.isPending || (pinValue.length > 0 && pinValue.length < 4)}
-              className="p-1 rounded text-emerald-400 hover:bg-emerald-500/20 transition-colors disabled:opacity-30"
+              className="p-1 rounded text-success hover:bg-success/20 transition-colors disabled:opacity-30"
             >
               {pinMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -405,7 +405,7 @@ function ParticipantRow({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-surface-1/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
             onClick={(e) => {
               if (e.target === e.currentTarget) setConfirmDelete(false);
             }}
@@ -414,38 +414,38 @@ function ParticipantRow({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl w-full max-w-sm"
+              className="bg-surface-2 border border-border rounded-2xl p-6 shadow-2xl w-full max-w-sm"
             >
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
-                  <AlertCircle className="w-5 h-5 text-red-400" />
+                <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center">
+                  <AlertCircle className="w-5 h-5 text-destructive" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-white">Delete Participant</h3>
-                  <p className="text-sm text-slate-400 mt-1">
+                  <h3 className="text-lg font-semibold text-foreground">Delete Participant</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
                     Remove <strong>{participant.name}</strong> from the participant list?
                   </p>
                   {participant.submissionCount > 0 && (
-                    <p className="text-sm text-amber-400 mt-1">
+                    <p className="text-sm text-warning mt-1">
                       This participant has {participant.submissionCount} submission(s). They must be removed before deletion.
                     </p>
                   )}
                   {participant.hasPin && (
-                    <span className="block mt-1 text-amber-400 text-sm">This participant has a PIN set.</span>
+                    <span className="block mt-1 text-warning text-sm">This participant has a PIN set.</span>
                   )}
                 </div>
               </div>
               <div className="flex gap-3 justify-end">
                 <button
                   onClick={() => setConfirmDelete(false)}
-                  className="px-4 py-2 rounded-xl text-sm text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                  className="px-4 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-surface-3 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={() => deleteMutation.mutate()}
                   disabled={deleteMutation.isPending || participant.submissionCount > 0}
-                  className="px-4 py-2 rounded-xl text-sm font-medium bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white transition-colors flex items-center gap-2"
+                  className="px-4 py-2 rounded-xl text-sm font-medium bg-destructive hover:bg-destructive disabled:opacity-50 text-foreground transition-colors flex items-center gap-2"
                 >
                   {deleteMutation.isPending ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -466,7 +466,7 @@ function ParticipantRow({
             initial={{ opacity: 0, y: -5 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="absolute right-0 top-full mt-1 bg-red-500/10 text-red-400 text-xs px-3 py-1.5 rounded-lg border border-red-500/20 whitespace-nowrap"
+            className="absolute right-0 top-full mt-1 bg-destructive/10 text-destructive text-xs px-3 py-1.5 rounded-lg border border-destructive/20 whitespace-nowrap"
           >
             {error}
           </motion.div>
@@ -507,14 +507,14 @@ export function AdminParticipantManagementInline() {
   const nonAdminParticipants = participants.filter((p: Participant) => p.role !== 'ADMIN');
 
   return (
-    <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 shadow-xl">
+    <div className="bg-surface-2 border border-border rounded-2xl p-6 shadow-xl">
       <div className="flex items-center gap-3 mb-5">
-        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-          <Users className="w-5 h-5 text-emerald-400" />
+        <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center">
+          <Users className="w-5 h-5 text-success" />
         </div>
         <div className="flex-1">
-          <h2 className="text-lg font-semibold text-white">Participants</h2>
-          <p className="text-xs text-slate-500">
+          <h2 className="text-lg font-semibold text-foreground">Participants</h2>
+          <p className="text-xs text-muted-foreground">
             {isLoading ? 'Loading...' : `${nonAdminParticipants.length} registered`}
           </p>
         </div>
@@ -523,29 +523,29 @@ export function AdminParticipantManagementInline() {
       <SingleAddForm onAdded={refresh} />
 
       {isError && (
-        <div className="flex items-center justify-center py-6 text-red-400 text-sm">
+        <div className="flex items-center justify-center py-6 text-destructive text-sm">
           <AlertCircle className="w-4 h-4 mr-2" />
           Failed to load
         </div>
       )}
 
       {!isLoading && !isError && nonAdminParticipants.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-8 text-slate-500">
+        <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
           <Users className="w-8 h-8 mb-2 opacity-30" />
           <p className="text-sm">No participants yet</p>
         </div>
       )}
 
       {!isLoading && !isError && nonAdminParticipants.length > 0 && (
-        <div className="space-y-1.5 mt-4 max-h-[300px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+        <div className="space-y-1.5 mt-4 max-h-[300px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-surface-4 scrollbar-track-transparent">
           {nonAdminParticipants.slice(0, 10).map((p: Participant) => (
-            <div key={p.id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-slate-800/20 border border-slate-800/30">
+            <div key={p.id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-surface-3 border border-border">
               <div className="flex-1 min-w-0">
-                <span className="text-sm font-medium text-white truncate block">{p.name}</span>
+                <span className="text-sm font-medium text-foreground truncate block">{p.name}</span>
               </div>
-              {p.hasPin && <span className="text-[10px] text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-md">PIN</span>}
+              {p.hasPin && <span className="text-[10px] text-warning bg-warning/10 px-1.5 py-0.5 rounded-md">PIN</span>}
               {p.submissionCount > 0 && (
-                <span className="text-[10px] text-slate-500 bg-slate-500/10 px-1.5 py-0.5 rounded-md">{p.submissionCount} sub</span>
+                <span className="text-[10px] text-muted-foreground bg-muted-foreground/10 px-1.5 py-0.5 rounded-md">{p.submissionCount} sub</span>
               )}
             </div>
           ))}
@@ -567,11 +567,11 @@ export function AdminParticipantManagement() {
   return (
     <div className="max-w-5xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white tracking-tight">Participants</h1>
-        <p className="text-slate-400 mt-1 text-sm">Add, edit, and manage competition participants</p>
+        <h1 className="text-2xl font-bold text-foreground tracking-tight">Participants</h1>
+        <p className="text-muted-foreground mt-1 text-sm">Add, edit, and manage competition participants</p>
       </div>
 
-      <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 shadow-xl">
+      <div className="bg-surface-2 border border-border rounded-2xl p-6 shadow-xl">
         {/* Add forms */}
         <div className="space-y-3 mb-6">
           <SingleAddForm onAdded={refresh} />
@@ -580,7 +580,7 @@ export function AdminParticipantManagement() {
 
         {/* Error state */}
         {isError && (
-          <div className="flex items-center justify-center py-8 text-red-400">
+          <div className="flex items-center justify-center py-8 text-destructive">
             <AlertCircle className="w-5 h-5 mr-2" />
             <span className="text-sm">Failed to load participants</span>
           </div>
@@ -588,14 +588,14 @@ export function AdminParticipantManagement() {
 
         {/* Loading */}
         {isLoading && (
-          <div className="flex items-center justify-center py-8 text-slate-500">
+          <div className="flex items-center justify-center py-8 text-muted-foreground">
             <Loader2 className="w-6 h-6 animate-spin" />
           </div>
         )}
 
         {/* Participant list */}
         {!isLoading && !isError && nonAdminParticipants.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-12 text-slate-500">
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <Users className="w-10 h-10 mb-2 opacity-30" />
             <p className="text-sm">No participants yet</p>
             <p className="text-xs mt-1">Add participants above so they can join the competition.</p>
@@ -616,8 +616,8 @@ export function AdminParticipantManagement() {
 
         {/* Admin accounts note */}
         {adminAccounts.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-slate-800/50">
-            <p className="text-xs text-slate-600">
+          <div className="mt-4 pt-4 border-t border-border">
+            <p className="text-xs text-muted-foreground">
               Admin accounts ({adminAccounts.map((a) => a.name).join(', ')}) — not shown in the participant list.
             </p>
           </div>

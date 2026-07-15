@@ -1,8 +1,10 @@
-import { useState, useCallback, type ReactNode, type FormEvent } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { apiGet, apiPatch } from '../../lib/api.js';
+import { StatTile } from '@/components/ui/stat-tile';
+import { Card } from '@/components/ui/card';
 import {
   Play,
   Pause,
@@ -35,36 +37,6 @@ interface CompetitionState {
 }
 
 // ---------------------------------------------------------------------------
-// Stats card
-// ---------------------------------------------------------------------------
-
-function StatCard({
-  icon,
-  label,
-  value,
-  color,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string | number;
-  color: string;
-}) {
-  return (
-    <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4">
-      <div className="flex items-center gap-3">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${color}`}>
-          {icon}
-        </div>
-        <div>
-          <p className="text-2xl font-bold text-white">{value}</p>
-          <p className="text-xs text-slate-400">{label}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Confirm Dialog
 // ---------------------------------------------------------------------------
 
@@ -92,77 +64,40 @@ function ConfirmDialog({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-surface-1/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       onClick={(e) => e.target === e.currentTarget && onCancel()}
     >
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl w-full max-w-md"
+        className="bg-card border border-border rounded-lg p-6 shadow-soft-lg w-full max-w-md"
       >
         <div className="flex items-center gap-3 mb-4">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-            variant === 'danger' ? 'bg-red-500/10' : 'bg-amber-500/10'
-          }`}>
-            <AlertCircle className={`w-5 h-5 ${variant === 'danger' ? 'text-red-400' : 'text-amber-400'}`} />
+          <div className={`w-10 h-10 rounded-md flex items-center justify-center ${variant === 'danger' ? 'bg-destructive-soft' : 'bg-warning-soft'}`}>
+            <AlertCircle className={`w-5 h-5 ${variant === 'danger' ? 'text-destructive' : 'text-warning'}`} />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-white">{title}</h3>
-            <p className="text-sm text-slate-400 mt-1">{message}</p>
+            <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+            <p className="text-sm text-muted-foreground mt-1">{message}</p>
           </div>
         </div>
         <div className="flex gap-3 justify-end">
           <button
             onClick={onCancel}
-            className="px-4 py-2 rounded-xl text-sm text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="px-4 py-2 rounded-md text-sm text-muted-foreground hover:text-foreground border border-border hover:bg-surface-3 transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
-            className={`px-4 py-2 rounded-xl text-sm font-medium text-white transition-colors ${
-              variant === 'danger'
-                ? 'bg-red-600 hover:bg-red-500'
-                : 'bg-amber-600 hover:bg-amber-500'
-            }`}
+            className={`px-4 py-2 rounded-md text-sm font-medium text-brand-foreground transition-colors ${variant === 'danger' ? 'bg-destructive hover:bg-destructive/90' : 'bg-warning hover:bg-warning/90'}`}
           >
             {confirmLabel}
           </button>
         </div>
       </motion.div>
     </motion.div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Section wrapper
-// ---------------------------------------------------------------------------
-
-function SectionCard({
-  icon,
-  title,
-  description,
-  children,
-}: {
-  icon: ReactNode;
-  title: string;
-  description?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 shadow-xl">
-      <div className="flex items-center gap-3 mb-5">
-        <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center">
-          {icon}
-        </div>
-        <div>
-          <h2 className="text-lg font-semibold text-white">{title}</h2>
-          {description && <p className="text-xs text-slate-500">{description}</p>}
-        </div>
-      </div>
-      {children}
-    </div>
   );
 }
 
@@ -220,32 +155,38 @@ function CompetitionControls({
     },
   });
 
-  const executeAction = useCallback((type: string, payload?: any) => {
-    switch (type) {
-      case 'status':
-        statusMutation.mutate(payload.status);
-        break;
-      case 'lock':
-        lockMutation.mutate(payload.locked);
-        break;
-      case 'round':
-        roundMutation.mutate(payload.round);
-        break;
-      case 'lock-all-rounds':
-        lockAllRoundsMutation.mutate();
-        break;
-    }
-    setConfirmAction(null);
-  }, [statusMutation, lockMutation, roundMutation, lockAllRoundsMutation]);
+  const executeAction = useCallback(
+    (type: string, payload?: any) => {
+      switch (type) {
+        case 'status':
+          statusMutation.mutate(payload.status);
+          break;
+        case 'lock':
+          lockMutation.mutate(payload.locked);
+          break;
+        case 'round':
+          roundMutation.mutate(payload.round);
+          break;
+        case 'lock-all-rounds':
+          lockAllRoundsMutation.mutate();
+          break;
+      }
+      setConfirmAction(null);
+    },
+    [statusMutation, lockMutation, roundMutation, lockAllRoundsMutation]
+  );
 
-  const handleAction = useCallback((type: string, payload?: any) => {
-    const destructiveActions = ['ENDED', 'lock-all-rounds'];
-    if (destructiveActions.includes(payload?.type ?? type)) {
-      setConfirmAction({ type, payload });
-      return;
-    }
-    executeAction(type, payload);
-  }, [executeAction]);
+  const handleAction = useCallback(
+    (type: string, payload?: any) => {
+      const destructiveActions = ['ENDED', 'lock-all-rounds'];
+      if (destructiveActions.includes(payload?.type ?? type)) {
+        setConfirmAction({ type, payload });
+        return;
+      }
+      executeAction(type, payload);
+    },
+    [executeAction]
+  );
 
   const statusLabels: Record<string, string> = {
     NOT_STARTED: 'Not Started',
@@ -254,45 +195,44 @@ function CompetitionControls({
     ENDED: 'Ended',
   };
 
-  const statusColors: Record<string, string> = {
-    NOT_STARTED: 'text-slate-400 bg-slate-500/10',
-    RUNNING: 'text-emerald-400 bg-emerald-500/10',
-    PAUSED: 'text-amber-400 bg-amber-500/10',
-    ENDED: 'text-red-400 bg-red-500/10',
+  const statusStyles: Record<string, { text: string; dot: string; chip: string }> = {
+    NOT_STARTED: { text: 'text-muted-foreground', dot: 'bg-muted-foreground', chip: 'bg-surface-3 border border-border' },
+    RUNNING: { text: 'text-success', dot: 'bg-success', chip: 'bg-success-soft border border-success/20' },
+    PAUSED: { text: 'text-warning', dot: 'bg-warning', chip: 'bg-warning-soft border border-warning/20' },
+    ENDED: { text: 'text-destructive', dot: 'bg-destructive', chip: 'bg-destructive-soft border border-destructive/20' },
   };
 
   const isPending = statusMutation.isPending || lockMutation.isPending || roundMutation.isPending;
 
   return (
     <>
-      <SectionCard
-        icon={<Swords className="w-4 h-4 text-amber-400" />}
-        title="Competition Controls"
-        description="Manage the overall competition state"
-      >
-        {/* Status display */}
+      <Card>
         <div className="flex items-center gap-3 mb-5">
-          <span className="text-sm text-slate-400">Status:</span>
-          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-medium ${state ? statusColors[state.status] : 'text-slate-500'}`}>
-            <span className={`w-2 h-2 rounded-full ${state ? {
-              NOT_STARTED: 'bg-slate-400',
-              RUNNING: 'bg-emerald-400',
-              PAUSED: 'bg-amber-400',
-              ENDED: 'bg-red-400',
-            }[state.status] : 'bg-slate-500'}`} />
-            {state ? statusLabels[state.status] : 'Unknown'}
-          </span>
-          <span className="text-sm text-slate-400 ml-2">Round:</span>
-          <span className="text-sm font-bold text-white">{state?.currentRound ?? 1}</span>
+          <div className="w-9 h-9 rounded-md border border-border bg-surface-3 flex items-center justify-center">
+            <Swords className="w-4 h-4 text-brand" />
+          </div>
+          <div>
+            <h2 className="text-base font-semibold text-foreground">Competition Controls</h2>
+            <p className="text-xs text-muted-foreground">Manage the overall competition state</p>
+          </div>
         </div>
 
-        {/* Status buttons */}
+        <div className="flex items-center gap-3 mb-5">
+          <span className="text-sm text-muted-foreground">Status:</span>
+          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-sm font-medium ${state ? statusStyles[state.status].chip : 'bg-surface-3 border border-border'}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${state ? statusStyles[state.status].dot : 'bg-muted-foreground'}`} />
+            {state ? statusLabels[state.status] : 'Unknown'}
+          </span>
+          <span className="text-sm text-muted-foreground ml-2">Round:</span>
+          <span className="text-sm font-bold text-foreground num">{state?.currentRound ?? 1}</span>
+        </div>
+
         <div className="flex flex-wrap gap-2 mb-4">
           {state?.status !== 'RUNNING' && (
             <button
               onClick={() => handleAction('status', { status: 'RUNNING' })}
               disabled={isPending}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 text-xs font-medium transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-md bg-success-soft hover:bg-success/20 text-success text-xs font-medium transition-colors disabled:opacity-50"
             >
               <Play className="w-3.5 h-3.5" />
               {state?.status === 'PAUSED' ? 'Resume' : 'Start'}
@@ -302,7 +242,7 @@ function CompetitionControls({
             <button
               onClick={() => handleAction('status', { status: 'PAUSED' })}
               disabled={isPending}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 text-xs font-medium transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-md bg-warning-soft hover:bg-warning/20 text-warning text-xs font-medium transition-colors disabled:opacity-50"
             >
               <Pause className="w-3.5 h-3.5" />
               Pause
@@ -312,7 +252,7 @@ function CompetitionControls({
             <button
               onClick={() => handleAction('status', { status: 'ENDED' })}
               disabled={isPending}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-600/20 hover:bg-red-600/30 text-red-400 text-xs font-medium transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-md bg-destructive-soft hover:bg-destructive/20 text-destructive text-xs font-medium transition-colors disabled:opacity-50"
             >
               <StopCircle className="w-3.5 h-3.5" />
               End
@@ -320,19 +260,18 @@ function CompetitionControls({
           )}
         </div>
 
-        {/* Lock toggle */}
-        <div className="flex items-center justify-between py-3 px-4 bg-slate-950/50 rounded-xl border border-slate-800/50 mb-3">
+        <div className="flex items-center justify-between py-3 px-4 bg-surface-1 rounded-md border border-border mb-3">
           <div className="flex items-center gap-3">
             {state?.locked ? (
-              <Lock className="w-4 h-4 text-red-400" />
+              <Lock className="w-4 h-4 text-destructive" />
             ) : (
-              <Unlock className="w-4 h-4 text-emerald-400" />
+              <Unlock className="w-4 h-4 text-success" />
             )}
             <div>
-              <p className="text-sm font-medium text-white">
+              <p className="text-sm font-medium text-foreground">
                 {state?.locked ? 'Submissions Locked' : 'Submissions Open'}
               </p>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 {state?.locked ? 'No new submissions accepted' : 'Participants can submit'}
               </p>
             </div>
@@ -346,63 +285,46 @@ function CompetitionControls({
               }
             }}
             disabled={isPending}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${
-              state?.locked
-                ? 'bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30'
-                : 'bg-red-600/20 text-red-400 hover:bg-red-600/30'
-            }`}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors disabled:opacity-50 ${state?.locked ? 'bg-success-soft text-success hover:bg-success/20' : 'bg-destructive-soft text-destructive hover:bg-destructive/20'}`}
           >
             {state?.locked ? 'Unlock' : 'Lock'}
           </button>
         </div>
 
-         {/* Round control */}
-         <div className="bg-slate-950/50 rounded-xl border border-slate-800/50 p-4">
-           <div className="flex items-center gap-3 mb-4">
-             <Target className="w-4 h-4 text-blue-400" />
-             <div>
-               <p className="text-sm font-medium text-white">Rounds</p>
-               <p className="text-xs text-slate-500">
-                 {state?.unlockedRound
-                   ? `Round ${state.unlockedRound} is currently unlocked`
-                   : 'No round is currently unlocked'}
-               </p>
-             </div>
-           </div>
-           <div className="flex flex-wrap gap-2">
-             {[1, 2, 3].map((round) => (
-               <button
-                 key={round}
-                 onClick={() => {
-                   if (state?.unlockedRound === round) {
-                     setConfirmAction({ type: 'lock-all-rounds', payload: {} });
-                   } else {
-                     executeAction('round', { round });
-                   }
-                 }}
-                 disabled={isPending}
-                 className={`px-4 py-2 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${
-                   state?.unlockedRound === round
-                     ? 'bg-blue-600/20 text-blue-400 hover:bg-blue-600/30'
-                     : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
-                 }`}
-               >
-                 Round {round} {state?.unlockedRound === round ? '(Active)' : 'Locked'}
-               </button>
-             ))}
-           </div>
-         </div>
-      </SectionCard>
+        <div className="bg-surface-1 rounded-md border border-border p-4">
+          <div className="flex items-center gap-3 mb-4">
+            <Target className="w-4 h-4 text-accent" />
+            <div>
+              <p className="text-sm font-medium text-foreground">Rounds</p>
+              <p className="text-xs text-muted-foreground">
+                {state?.unlockedRound ? `Round ${state.unlockedRound} is currently unlocked` : 'No round is currently unlocked'}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {[1, 2, 3].map((round) => (
+              <button
+                key={round}
+                onClick={() => {
+                  if (state?.unlockedRound === round) {
+                    setConfirmAction({ type: 'lock-all-rounds', payload: {} });
+                  } else {
+                    executeAction('round', { round });
+                  }
+                }}
+                disabled={isPending}
+                className={`px-4 py-2 rounded-md text-xs font-medium transition-colors disabled:opacity-50 ${state?.unlockedRound === round ? 'bg-accent-soft text-accent hover:bg-accent/20' : 'bg-surface-3 hover:bg-surface-4 text-foreground border border-border'}`}
+              >
+                Round {round} {state?.unlockedRound === round ? '(Active)' : 'Locked'}
+              </button>
+            ))}
+          </div>
+        </div>
+      </Card>
 
       <ConfirmDialog
         open={confirmAction !== null}
-        title={
-          confirmAction?.type === 'lock'
-            ? 'Lock Submissions'
-            : confirmAction?.type === 'lock-all-rounds'
-              ? 'Lock All Rounds'
-              : 'End Competition'
-        }
+        title={confirmAction?.type === 'lock' ? 'Lock Submissions' : confirmAction?.type === 'lock-all-rounds' ? 'Lock All Rounds' : 'End Competition'}
         message={
           confirmAction?.type === 'lock'
             ? 'This will prevent all participants from submitting new solutions. Are you sure?'
@@ -410,20 +332,8 @@ function CompetitionControls({
               ? 'This will lock the currently unlocked round. Participants will not be able to submit to any round. Are you sure?'
               : 'This will mark the competition as ended. No further submissions or changes will be possible for participants. Are you sure?'
         }
-        confirmLabel={
-          confirmAction?.type === 'lock'
-            ? 'Lock Submissions'
-            : confirmAction?.type === 'lock-all-rounds'
-              ? 'Lock Round'
-              : 'End Competition'
-        }
-        variant={
-          confirmAction?.type === 'lock'
-            ? 'warning'
-            : confirmAction?.type === 'lock-all-rounds'
-              ? 'danger'
-              : 'danger'
-        }
+        confirmLabel={confirmAction?.type === 'lock' ? 'Lock Submissions' : confirmAction?.type === 'lock-all-rounds' ? 'Lock Round' : 'End Competition'}
+        variant={confirmAction?.type === 'lock' ? 'warning' : 'danger'}
         onConfirm={() => {
           if (confirmAction) {
             executeAction(confirmAction.type, confirmAction.payload);
@@ -480,69 +390,58 @@ function LeaderboardControls({
   };
 
   return (
-    <SectionCard
-      icon={<Snowflake className="w-4 h-4 text-blue-400" />}
-      title="Leaderboard Controls"
-      description="Freeze/unfreeze results and export data"
-    >
-      <div className="flex items-center justify-between py-3 px-4 bg-slate-950/50 rounded-xl border border-slate-800/50 mb-3">
+    <Card>
+      <div className="flex items-center gap-3 mb-5">
+        <div className="w-9 h-9 rounded-md border border-border bg-surface-3 flex items-center justify-center">
+          <Snowflake className="w-4 h-4 text-info" />
+        </div>
+        <div>
+          <h2 className="text-base font-semibold text-foreground">Leaderboard Controls</h2>
+          <p className="text-xs text-muted-foreground">Freeze/unfreeze results and export data</p>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between py-3 px-4 bg-surface-1 rounded-md border border-border mb-3">
         <div className="flex items-center gap-3">
           {state?.leaderboardFrozen ? (
-            <Snowflake className="w-4 h-4 text-blue-400" />
+            <Snowflake className="w-4 h-4 text-info" />
           ) : (
-            <Eye className="w-4 h-4 text-emerald-400" />
+            <Eye className="w-4 h-4 text-success" />
           )}
           <div>
-            <p className="text-sm font-medium text-white">
+            <p className="text-sm font-medium text-foreground">
               {state?.leaderboardFrozen ? 'Leaderboard Frozen' : 'Leaderboard Live'}
             </p>
-            <p className="text-xs text-slate-500">
-              {state?.leaderboardFrozen
-                ? 'Results are frozen — showing snapshot'
-                : 'Showing live results'}
+            <p className="text-xs text-muted-foreground">
+              {state?.leaderboardFrozen ? 'Results are frozen — showing snapshot' : 'Showing live results'}
             </p>
           </div>
         </div>
         <button
           onClick={() => freezeMutation.mutate()}
           disabled={freezeMutation.isPending}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${
-            state?.leaderboardFrozen
-              ? 'bg-amber-600/20 text-amber-400 hover:bg-amber-600/30'
-              : 'bg-blue-600/20 text-blue-400 hover:bg-blue-600/30'
-          }`}
+          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors disabled:opacity-50 ${state?.leaderboardFrozen ? 'bg-warning-soft text-warning hover:bg-warning/20' : 'bg-info-soft text-info hover:bg-info/20'}`}
         >
-          {freezeMutation.isPending ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          ) : state?.leaderboardFrozen ? (
-            'Unfreeze'
-          ) : (
-            'Freeze'
-          )}
+          {freezeMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : state?.leaderboardFrozen ? 'Unfreeze' : 'Freeze'}
         </button>
       </div>
 
       <button
         onClick={handleExport}
-        className="flex items-center gap-2 w-full px-4 py-2.5 rounded-xl bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 text-sm text-slate-300 hover:text-white transition-colors"
+        className="flex items-center gap-2 w-full px-4 py-2.5 rounded-md bg-surface-3 hover:bg-surface-4 border border-border text-sm text-foreground transition-colors"
       >
-        <Download className="w-4 h-4 text-emerald-400" />
+        <Download className="w-4 h-4 text-success" />
         Export CSV
       </button>
 
       <AnimatePresence>
         {error && (
-          <motion.p
-            initial={{ opacity: 0, y: -5 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="text-xs text-red-400 mt-2"
-          >
+          <motion.p initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="text-xs text-destructive mt-2">
             {error}
           </motion.p>
         )}
       </AnimatePresence>
-    </SectionCard>
+    </Card>
   );
 }
 
@@ -551,55 +450,32 @@ function LeaderboardControls({
 // ---------------------------------------------------------------------------
 
 function QuickNavCards() {
+  const navItems = [
+    { to: '/admin/challenges', icon: Swords, label: 'Challenges', desc: 'Create, edit, and manage CSS challenges', tint: 'text-brand' },
+    { to: '/admin/submissions', icon: FileText, label: 'Submissions', desc: 'Review, rejudge, and manage submissions', tint: 'text-accent' },
+    { to: '/admin/participants', icon: Users, label: 'Participants', desc: 'Add, edit, and manage participants', tint: 'text-success' },
+  ];
+
   return (
-    <div className="space-y-3">
-      <Link
-        to="/admin/challenges"
-        className="flex items-center justify-between w-full px-4 py-3.5 rounded-xl bg-slate-900/50 border border-slate-800 hover:bg-slate-800/50 transition-all group"
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center">
-            <Swords className="w-4 h-4 text-amber-400" />
+    <div className="space-y-2">
+      {navItems.map((item) => (
+        <Link
+          key={item.to}
+          to={item.to}
+          className="flex items-center justify-between w-full px-4 py-3.5 rounded-md bg-card border border-border hover:bg-surface-2 transition-all group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-md bg-surface-3 border border-border flex items-center justify-center">
+              <item.icon className={`w-4 h-4 ${item.tint}`} />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">{item.label}</p>
+              <p className="text-xs text-muted-foreground">{item.desc}</p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-medium text-white">Challenges</p>
-            <p className="text-xs text-slate-500">Create, edit, and manage CSS challenges</p>
-          </div>
-        </div>
-        <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-amber-400 transition-colors" />
-      </Link>
-
-      <Link
-        to="/admin/submissions"
-        className="flex items-center justify-between w-full px-4 py-3.5 rounded-xl bg-slate-900/50 border border-slate-800 hover:bg-slate-800/50 transition-all group"
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-purple-500/10 flex items-center justify-center">
-            <FileText className="w-4 h-4 text-purple-400" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-white">Submissions</p>
-            <p className="text-xs text-slate-500">Review, rejudge, and manage submissions</p>
-          </div>
-        </div>
-        <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-purple-400 transition-colors" />
-      </Link>
-
-      <Link
-        to="/admin/participants"
-        className="flex items-center justify-between w-full px-4 py-3.5 rounded-xl bg-slate-900/50 border border-slate-800 hover:bg-slate-800/50 transition-all group"
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-            <Users className="w-4 h-4 text-emerald-400" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-white">Participants</p>
-            <p className="text-xs text-slate-500">Add, edit, and manage participants</p>
-          </div>
-        </div>
-        <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-emerald-400 transition-colors" />
-      </Link>
+          <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-brand transition-colors" />
+        </Link>
+      ))}
     </div>
   );
 }
@@ -622,7 +498,6 @@ export function AdminDashboard() {
     refetchInterval: 10_000,
   });
 
-  // Fetch stats
   const { data: stats } = useQuery({
     queryKey: ['admin-stats'],
     queryFn: async () => {
@@ -642,22 +517,19 @@ export function AdminDashboard() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 text-slate-400">
-        <Loader2 className="w-8 h-8 animate-spin mb-4 text-amber-500" />
-        <p>Loading admin dashboard...</p>
+      <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
+        <Loader2 className="w-8 h-8 animate-spin mb-4 text-brand" />
+        <p>Loading admin dashboard…</p>
       </div>
     );
   }
 
   if (isError || !state) {
     return (
-      <div className="flex flex-col items-center justify-center py-24">
-        <AlertCircle className="w-12 h-12 text-red-400 mb-4" />
-        <p className="text-red-400">Failed to load competition state.</p>
-        <button
-          onClick={() => refetch()}
-          className="mt-4 text-sm text-slate-400 hover:text-white transition-colors"
-        >
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <AlertCircle className="w-10 h-10 text-destructive mb-4" />
+        <p className="text-destructive">Failed to load competition state.</p>
+        <button onClick={() => refetch()} className="mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors">
           ← Retry
         </button>
       </div>
@@ -666,51 +538,36 @@ export function AdminDashboard() {
 
   return (
     <div className="max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white tracking-tight">Dashboard</h1>
-        <p className="text-slate-400 mt-1 text-sm">Overview and quick controls for the competition</p>
+      <div className="mb-7">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Dashboard</h1>
+        <p className="text-muted-foreground mt-1 text-sm">Overview and quick controls for the competition</p>
       </div>
 
-      {/* Stats row */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        <StatCard
-          icon={<Swords className="w-5 h-5 text-amber-400" />}
-          label="Challenges"
-          value={stats?.totalChallenges ?? '—'}
-          color="bg-amber-500/10"
-        />
-        <StatCard
-          icon={<Users className="w-5 h-5 text-emerald-400" />}
-          label="Participants"
-          value={stats?.totalParticipants ?? '—'}
-          color="bg-emerald-500/10"
-        />
-        <StatCard
-          icon={<FileText className="w-5 h-5 text-purple-400" />}
-          label="Submissions"
-          value={stats?.totalSubmissions ?? '—'}
-          color="bg-purple-500/10"
-        />
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        <StatTile icon={Swords} label="Challenges" value={stats?.totalChallenges ?? '—'} accent="brand" />
+        <StatTile icon={Users} label="Participants" value={stats?.totalParticipants ?? '—'} accent="success" />
+        <StatTile icon={FileText} label="Submissions" value={stats?.totalSubmissions ?? '—'} accent="accent" />
       </div>
 
-      {/* Main grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left column */}
-        <div className="space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="space-y-5">
           <CompetitionControls state={state} onRefresh={() => refetch()} />
           <LeaderboardControls state={state} onRefresh={() => refetch()} />
         </div>
 
-        {/* Right column */}
-        <div className="space-y-6">
-          <SectionCard
-            icon={<Target className="w-4 h-4 text-blue-400" />}
-            title="Quick Navigation"
-            description="Access other admin sections"
-          >
+        <div className="space-y-5">
+          <Card>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-9 h-9 rounded-md border border-border bg-surface-3 flex items-center justify-center">
+                <Target className="w-4 h-4 text-accent" />
+              </div>
+              <div>
+                <h2 className="text-base font-semibold text-foreground">Quick Navigation</h2>
+                <p className="text-xs text-muted-foreground">Access other admin sections</p>
+              </div>
+            </div>
             <QuickNavCards />
-          </SectionCard>
+          </Card>
 
           <AdminParticipantManagementInline />
         </div>

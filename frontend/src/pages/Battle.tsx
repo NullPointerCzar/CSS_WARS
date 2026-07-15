@@ -6,13 +6,13 @@ import {
   ArrowLeft,
   Loader2,
   AlertCircle,
-  Circle,
   Eye,
   Send,
   ImageIcon,
   Lock,
 } from 'lucide-react';
 import { useIdentity } from '../lib/identity.js';
+import { Badge } from '@/components/ui/badge';
 import { MonacoEditor } from '../components/Editor/MonacoEditor.js';
 import { LivePreview } from '../components/Preview/LivePreview.js';
 import { ColorPalette } from '../components/Preview/ColorPalette.js';
@@ -37,9 +37,9 @@ interface Challenge {
 }
 
 const difficultyConfig = {
-  EASY: { color: 'text-emerald-400', bg: 'bg-emerald-500/10', label: 'Easy' },
-  MEDIUM: { color: 'text-amber-400', bg: 'bg-amber-500/10', label: 'Medium' },
-  HARD: { color: 'text-red-400', bg: 'bg-red-500/10', label: 'Hard' },
+  EASY: { variant: 'success' as const, label: 'Easy' },
+  MEDIUM: { variant: 'warning' as const, label: 'Medium' },
+  HARD: { variant: 'danger' as const, label: 'Hard' },
 };
 
 const STORAGE_PREFIX = 'csswars_draft_';
@@ -176,8 +176,8 @@ export function Battle() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 text-slate-400">
-        <Loader2 className="w-8 h-8 animate-spin mb-4 text-amber-500" />
+      <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
+        <Loader2 className="w-8 h-8 animate-spin mb-4 text-warning" />
         <p>Loading challenge...</p>
       </div>
     );
@@ -186,11 +186,11 @@ export function Battle() {
   if (isError || !challenge) {
     return (
       <div className="flex flex-col items-center justify-center py-24">
-        <AlertCircle className="w-12 h-12 text-red-400 mb-4" />
-        <p className="text-red-400">Challenge not found.</p>
+        <AlertCircle className="w-12 h-12 text-destructive mb-4" />
+        <p className="text-destructive">Challenge not found.</p>
         <button
           onClick={() => navigate('/challenges')}
-          className="mt-4 text-sm text-slate-400 hover:text-white transition-colors"
+          className="mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           ← Back to challenges
         </button>
@@ -203,23 +203,22 @@ export function Battle() {
   return (
     <div className="h-full flex flex-col -mx-6 -my-8">
       {/* ─── Top bar ─── */}
-      <div className="flex items-center justify-between px-6 py-3 border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm shrink-0">
+      <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-surface-1/70 backdrop-blur-md shrink-0">
         <div className="flex items-center gap-4">
           <Link
             to="/challenges"
-            className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Challenges
           </Link>
-          <div className="w-px h-6 bg-slate-800" />
+          <div className="w-px h-6 bg-border" />
           <div className="flex items-center gap-3">
-            <h1 className="text-lg font-semibold text-white">{challenge.title}</h1>
-            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium ${cfg.bg} ${cfg.color}`}>
-              <Circle className="w-1.5 h-1.5 fill-current" />
+            <h1 className="text-lg font-semibold text-foreground">{challenge.title}</h1>
+            <Badge variant={cfg.variant} size="sm">
               {cfg.label}
-            </span>
-            <span className="text-xs text-slate-500 bg-slate-800/50 px-2 py-0.5 rounded-md">
+            </Badge>
+            <span className="text-xs text-muted-foreground bg-surface-3 border border-border px-2 py-0.5 rounded">
               Round {challenge.roundNumber}
             </span>
           </div>
@@ -228,26 +227,26 @@ export function Battle() {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             {submitError && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20">
-                <AlertCircle className="w-3.5 h-3.5 text-red-400" />
-                <span className="text-xs text-red-400 max-w-[200px] truncate">{submitError}</span>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-destructive-soft border border-destructive/20">
+                <AlertCircle className="w-3.5 h-3.5 text-destructive" />
+                <span className="text-xs text-destructive max-w-[200px] truncate">{submitError}</span>
               </div>
             )}
             {isWrongRound && !isGloballyLocked && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-500/10 border border-slate-500/20">
-                <Lock className="w-3.5 h-3.5 text-slate-400" />
-                <span className="text-xs text-slate-400">Round {challenge.roundNumber} is locked</span>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-surface-3 border border-border">
+                <Lock className="w-3.5 h-3.5 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Round {challenge.roundNumber} is locked</span>
               </div>
             )}
             <button
               onClick={handleSubmit}
               disabled={!canSubmit}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
                 isSubmitting
-                  ? 'bg-amber-600/50 text-amber-200 cursor-not-allowed'
+                  ? 'bg-brand/50 text-brand-foreground cursor-not-allowed'
                   : !canSubmit
-                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                    : 'bg-amber-600 hover:bg-amber-500 text-white shadow-lg shadow-amber-500/20 hover:shadow-amber-500/30 active:scale-95'
+                    ? 'bg-surface-3 text-muted-foreground cursor-not-allowed'
+                    : 'bg-brand hover:bg-brand/90 text-brand-foreground shadow-soft-md hover:shadow-focus active:scale-[0.98]'
               }`}
             >
               {isSubmitting ? (
@@ -272,7 +271,7 @@ export function Battle() {
       <div className="flex-1 flex min-h-0">
        <div className="flex-1 flex min-w-0">
         {/* ─── Editor panel (wider — 60%) ─── */}
-        <div className="w-3/5 flex flex-col border-r border-slate-800">
+        <div className="w-3/5 flex flex-col border-r border-border">
           <div className="flex-1 min-h-0 p-3">
             {identity ? (
               <MonacoEditor
@@ -284,7 +283,7 @@ export function Battle() {
                 onCssChange={handleCssChange}
               />
             ) : (
-              <div className="flex items-center justify-center h-full text-slate-500">
+              <div className="flex items-center justify-center h-full text-muted-foreground">
                 Please log in to edit
               </div>
             )}
@@ -292,22 +291,22 @@ export function Battle() {
         </div>
 
         {/* ─── Right panel (40%) — target image on top, preview below ─── */}
-        <div className="w-2/5 flex flex-col bg-slate-950 overflow-y-auto">
+        <div className="w-2/5 flex flex-col bg-surface-1 overflow-y-auto">
           {/* ─── Target image (4:3 viewport, never stretched) ─── */}
-          <div className="flex flex-col border-b border-slate-800 shrink-0">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-slate-800 shrink-0 bg-slate-900/50">
-              <span className="text-xs font-medium text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                <ImageIcon className="w-3.5 h-3.5 text-amber-400" />
+          <div className="flex flex-col border-b border-border shrink-0">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-border shrink-0 bg-surface-2">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                <ImageIcon className="w-3.5 h-3.5 text-brand" />
                 Target
               </span>
-              <span className="text-[10px] text-slate-500">Reference</span>
+              <span className="text-[10px] text-muted-foreground">Reference</span>
             </div>
-            <div className="aspect-[4/3] bg-slate-950 flex items-center justify-center overflow-hidden">
+            <div className="aspect-[4/3] bg-surface-1 flex items-center justify-center overflow-hidden">
               {targetImageError ? (
-                <div className="flex flex-col items-center gap-2 text-amber-400 px-4 text-center">
+                <div className="flex flex-col items-center gap-2 text-brand px-4 text-center">
                   <ImageIcon className="w-8 h-8 opacity-50" />
                   <p className="text-xs">Target image failed to load</p>
-                  <p className="text-[10px] text-slate-500">
+                  <p className="text-[10px] text-muted-foreground">
                     The admin may need to re-upload it.
                   </p>
                 </div>
@@ -324,13 +323,13 @@ export function Battle() {
 
           {/* ─── Live preview — same 4:3 aspect ratio as target ─── */}
           <div className="flex flex-col shrink-0">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-slate-800 shrink-0 bg-slate-900/50">
-              <span className="text-xs font-medium text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Eye className="w-3.5 h-3.5 text-amber-400" />
+            <div className="flex items-center justify-between px-4 py-2 border-b border-border shrink-0 bg-surface-2">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                <Eye className="w-3.5 h-3.5 text-brand" />
                 Preview
               </span>
             </div>
-            <div className="aspect-[4/3] w-full bg-slate-950 relative overflow-hidden">
+            <div className="aspect-[4/3] w-full bg-surface-1 relative overflow-hidden">
               <div className={submitResult ? 'opacity-30 pointer-events-none absolute inset-0' : 'opacity-100 absolute inset-0'}>
                 <CompareView
                   mode={compareMode}
@@ -363,9 +362,9 @@ export function Battle() {
 
         {/* ─── Color palette sidebar (far-right utility panel) ─── */}
         {!targetImageError && (
-          <div className="w-20 shrink-0 flex flex-col border-l border-slate-800 bg-slate-950 min-h-0">
-            <div className="flex items-center justify-center px-2 py-2 border-b border-slate-800 shrink-0 bg-slate-900/50">
-              <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
+          <div className="w-20 shrink-0 flex flex-col border-l border-border bg-surface-1 min-h-0">
+            <div className="flex items-center justify-center px-2 py-2 border-b border-border shrink-0 bg-surface-2">
+              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
                 Colors
               </span>
             </div>

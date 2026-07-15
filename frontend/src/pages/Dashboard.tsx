@@ -1,8 +1,10 @@
-import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import type { ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { useIdentity } from '../lib/identity.js';
+import { StatTile } from '@/components/ui/stat-tile';
+import { Badge } from '@/components/ui/badge';
 import {
   Swords,
   Loader2,
@@ -19,6 +21,7 @@ import {
   UserCheck,
   Flame,
   Sparkles,
+  Lock as LockIcon,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -66,149 +69,116 @@ interface Participant {
 // Helpers
 // ---------------------------------------------------------------------------
 
-const difficultyConfig = {
-  EASY: { color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', label: 'Easy' },
-  MEDIUM: { color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20', label: 'Medium' },
-  HARD: { color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20', label: 'Hard' },
+const difficultyVariant: Record<string, 'success' | 'warning' | 'danger'> = {
+  EASY: 'success',
+  MEDIUM: 'warning',
+  HARD: 'danger',
 };
 
-// Static accent mapping for Tailwind JIT (dynamic class interpolation not supported)
-const accentStyles: Record<string, { ring: string; text: string }> = {
-  emerald: { ring: 'ring-emerald-500/20', text: 'text-emerald-400' },
-  amber: { ring: 'ring-amber-500/20', text: 'text-amber-400' },
-  blue: { ring: 'ring-blue-500/20', text: 'text-blue-400' },
+const difficultyLabel: Record<string, string> = {
+  EASY: 'Easy',
+  MEDIUM: 'Medium',
+  HARD: 'Hard',
 };
 
-const statusConfig: Record<string, { color: string; bg: string; dot: string; label: string }> = {
-  NOT_STARTED: { color: 'text-slate-400', bg: 'bg-slate-500/10', dot: 'bg-slate-400', label: 'Not Started' },
-  RUNNING: { color: 'text-emerald-400', bg: 'bg-emerald-500/10', dot: 'bg-emerald-400', label: 'Running' },
-  PAUSED: { color: 'text-amber-400', bg: 'bg-amber-500/10', dot: 'bg-amber-400', label: 'Paused' },
-  ENDED: { color: 'text-red-400', bg: 'bg-red-500/10', dot: 'bg-red-400', label: 'Ended' },
+const statusConfig: Record<
+  string,
+  { color: string; dot: string; label: string }
+> = {
+  NOT_STARTED: {
+    color: 'text-muted-foreground',
+    dot: 'bg-muted-foreground',
+    label: 'Not Started',
+  },
+  RUNNING: {
+    color: 'text-success',
+    dot: 'bg-success',
+    label: 'Running',
+  },
+  PAUSED: { color: 'text-warning', dot: 'bg-warning', label: 'Paused' },
+  ENDED: { color: 'text-destructive', dot: 'bg-destructive', label: 'Ended' },
 };
 
 // ---------------------------------------------------------------------------
-// Stat Card
-// ---------------------------------------------------------------------------
-
-function StatCard({
-  icon,
-  label,
-  value,
-  sub,
-  accent,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string | number;
-  sub?: string;
-  accent?: string;
-}) {
-  const ring = accent ? accentStyles[accent]?.ring ?? '' : '';
-  const textCls = accent ? accentStyles[accent]?.text ?? 'text-amber-400' : 'text-amber-400';
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`bg-slate-900/50 border border-slate-800 rounded-2xl p-5 shadow-xl ${ring}`}
-    >
-      <div className="flex items-start justify-between mb-3">
-        <div className={`w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center ${textCls}`}>
-          {icon}
-        </div>
-      </div>
-      <p className="text-2xl font-bold text-white tracking-tight">{value}</p>
-      <p className="text-xs text-slate-500 mt-0.5">{label}</p>
-      {sub && <p className="text-[10px] text-slate-600 mt-0.5">{sub}</p>}
-    </motion.div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Competiton Status Card
+// Competition Status Card
 // ---------------------------------------------------------------------------
 
 function CompetitionStatusCard({ state }: { state: CompetitionState }) {
   const cfg = statusConfig[state.status] ?? statusConfig.NOT_STARTED;
 
+  const quickAction =
+    state.status === 'RUNNING' ? (
+      <Link to="/challenges" className="text-sm font-semibold text-brand hover:text-brand/80 transition-colors">
+        Solve a Challenge →
+      </Link>
+    ) : (
+      <Link to="/leaderboard" className="text-sm font-semibold text-brand hover:text-brand/80 transition-colors">
+        View Leaderboard →
+      </Link>
+    );
+
   return (
-    <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 shadow-xl">
-      <div className="flex items-center justify-between mb-5">
+    <div className="bg-card border border-border rounded-lg shadow-soft-sm p-5">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
-            <Play className="w-5 h-5 text-amber-400" />
+          <div className="w-9 h-9 rounded-md border border-border bg-surface-3 flex items-center justify-center">
+            <Play className="w-4 h-4 text-brand" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-white">Competition Status</h2>
-            <p className="text-xs text-slate-500">Current state of the event</p>
+            <h2 className="text-base font-semibold text-foreground">Competition Status</h2>
+            <p className="text-xs text-muted-foreground">Current state of the event</p>
           </div>
         </div>
 
-        {/* Status badge */}
-        <span className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-sm font-medium ${cfg.bg} ${cfg.color}`}>
-          <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />
+        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium ${cfg.color} bg-surface-3 border border-border`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
           {cfg.label}
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        {/* Round */}
-        <div className="flex items-center gap-3 px-4 py-3 bg-slate-950/50 rounded-xl border border-slate-800/50">
-          <Target className="w-4 h-4 text-blue-400 shrink-0" />
-          <div>
-            <p className="text-xs text-slate-500">Active Round</p>
-            <p className="text-lg font-bold text-white">
-              {state.unlockedRound ? `Round ${state.unlockedRound}` : 'None'}
-            </p>
-          </div>
-        </div>
+      <div className="grid grid-cols-2 gap-2">
+        <InfoCell icon={<Target className="w-4 h-4 text-accent shrink-0" />} label="Active Round" value={state.unlockedRound ? `Round ${state.unlockedRound}` : 'None'} />
+        <InfoCell
+          icon={state.locked ? <LockIcon className="w-4 h-4 text-destructive shrink-0" /> : <Unlock className="w-4 h-4 text-success shrink-0" />}
+          label="Submissions"
+          value={state.locked ? 'Closed' : 'Open'}
+          valueClass={state.locked ? 'text-destructive' : 'text-success'}
+        />
+        <InfoCell
+          icon={state.leaderboardFrozen ? <Snowflake className="w-4 h-4 text-info shrink-0" /> : <BarChart3 className="w-4 h-4 text-success shrink-0" />}
+          label="Leaderboard"
+          value={state.leaderboardFrozen ? 'Frozen' : 'Live'}
+          valueClass={state.leaderboardFrozen ? 'text-info' : 'text-success'}
+        />
+        <InfoCell icon={<Flame className="w-4 h-4 text-brand shrink-0" />} label="Quick Action" value={null} custom={quickAction} />
+      </div>
+    </div>
+  );
+}
 
-        {/* Lock */}
-        <div className="flex items-center gap-3 px-4 py-3 bg-slate-950/50 rounded-xl border border-slate-800/50">
-          {state.locked ? (
-            <Lock className="w-4 h-4 text-red-400 shrink-0" />
-          ) : (
-            <Unlock className="w-4 h-4 text-emerald-400 shrink-0" />
-          )}
-          <div>
-            <p className="text-xs text-slate-500">Submissions</p>
-            <p className={`text-sm font-semibold ${state.locked ? 'text-red-400' : 'text-emerald-400'}`}>
-              {state.locked ? 'Closed' : 'Open'}
-            </p>
-          </div>
-        </div>
-
-        {/* Freeze */}
-        <div className="flex items-center gap-3 px-4 py-3 bg-slate-950/50 rounded-xl border border-slate-800/50">
-          {state.leaderboardFrozen ? (
-            <Snowflake className="w-4 h-4 text-blue-400 shrink-0" />
-          ) : (
-            <BarChart3 className="w-4 h-4 text-emerald-400 shrink-0" />
-          )}
-          <div>
-            <p className="text-xs text-slate-500">Leaderboard</p>
-            <p className={`text-sm font-semibold ${state.leaderboardFrozen ? 'text-blue-400' : 'text-emerald-400'}`}>
-              {state.leaderboardFrozen ? 'Frozen' : 'Live'}
-            </p>
-          </div>
-        </div>
-
-        {/* Action */}
-        <div className="flex items-center gap-3 px-4 py-3 bg-slate-950/50 rounded-xl border border-slate-800/50">
-          <Flame className="w-4 h-4 text-amber-400 shrink-0" />
-          <div>
-            <p className="text-xs text-slate-500">Quick Action</p>
-            {state.status === 'RUNNING' ? (
-              <Link to="/challenges" className="text-sm font-semibold text-amber-400 hover:text-amber-300 transition-colors">
-                Solve a Challenge →
-              </Link>
-            ) : (
-              <Link to="/leaderboard" className="text-sm font-semibold text-amber-400 hover:text-amber-300 transition-colors">
-                View Leaderboard →
-              </Link>
-            )}
-          </div>
-        </div>
+function InfoCell({
+  icon,
+  label,
+  value,
+  valueClass,
+  custom,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string | null;
+  valueClass?: string;
+  custom?: ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-3 px-3.5 py-2.5 bg-surface-1 rounded-md border border-border">
+      {icon}
+      <div className="min-w-0">
+        <p className="text-[11px] text-muted-foreground">{label}</p>
+        {custom ? (
+          custom
+        ) : (
+          <p className={`text-sm font-semibold ${valueClass ?? 'text-foreground'}`}>{value}</p>
+        )}
       </div>
     </div>
   );
@@ -219,77 +189,65 @@ function CompetitionStatusCard({ state }: { state: CompetitionState }) {
 // ---------------------------------------------------------------------------
 
 function Podium({ entries }: { entries: OverallEntry[] }) {
-  const top3 = entries.slice(0, 3);
-
-  // Sort by rank so 1st is center
-  const sorted = [...top3].sort((a, b) => a.rank - b.rank);
+  const top3 = [...entries]
+    .sort((a, b) => a.rank - b.rank)
+    .slice(0, 3);
 
   if (top3.length === 0) return null;
 
+  const podiumStyles = [
+    // rank 1 (center)
+    'w-20 h-[92px] bg-brand-soft border border-brand/20 rounded-t-md flex items-center justify-center',
+    // rank 2
+    'w-16 h-[60px] bg-surface-3 border border-border rounded-t-md flex items-center justify-center',
+    // rank 3
+    'w-14 h-[40px] bg-surface-3 border border-border rounded-t-md flex items-center justify-center',
+  ];
+  const medalStyles = [
+    'w-10 h-10 rounded-full bg-brand text-brand-foreground flex items-center justify-center shadow-soft-md ring-2 ring-brand/30',
+    'w-8 h-8 rounded-full bg-surface-4 text-muted-foreground flex items-center justify-center',
+    'w-8 h-8 rounded-full bg-surface-4 text-muted-foreground flex items-center justify-center',
+  ];
+
+  // Render order: 2nd, 1st, 3rd
+  const order = [1, 0, 2].filter((i) => top3[i]);
+
   return (
-    <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 shadow-xl">
-      <div className="flex items-center gap-3 mb-5">
-        <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
-          <Trophy className="w-5 h-5 text-amber-400" />
+    <div className="bg-card border border-border rounded-lg shadow-soft-sm p-5">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-9 h-9 rounded-md border border-border bg-surface-3 flex items-center justify-center">
+          <Trophy className="w-4 h-4 text-brand" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-white">Top Participants</h2>
-          <p className="text-xs text-slate-500">Overall leaderboard podium</p>
+          <h2 className="text-base font-semibold text-foreground">Top Participants</h2>
+          <p className="text-xs text-muted-foreground">Overall leaderboard podium</p>
         </div>
       </div>
 
-      {/* Podium */}
       <div className="flex items-end justify-center gap-3 min-h-[160px]">
-        {sorted.length >= 2 && (
-          <div className="flex flex-col items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-300 to-slate-400 flex items-center justify-center shadow-lg">
-              <Medal className="w-4 h-4 text-slate-700" />
+        {order.map((i) => {
+          const e = top3[i];
+          return (
+            <div key={e.userId} className="flex flex-col items-center gap-2">
+              <div className={medalStyles[i]}>
+                <Medal className="w-4 h-4" />
+              </div>
+              <p className="text-xs font-semibold text-foreground text-center leading-tight max-w-[80px] truncate">
+                {e.name.split(' ')[0]}
+              </p>
+              <p className="text-sm font-bold text-brand num">{e.totalScore.toFixed(1)}</p>
+              <div className={podiumStyles[i]}>
+                <span className="text-lg font-bold text-muted-foreground">{i + 1}</span>
+              </div>
             </div>
-            <p className="text-sm font-semibold text-white text-center leading-tight max-w-[80px] truncate">
-              {sorted[1].name.split(' ')[0]}
-            </p>
-            <p className="text-lg font-bold text-slate-300">{sorted[1].totalScore.toFixed(1)}</p>
-            <div className="w-16 h-[60px] bg-slate-800 rounded-t-xl flex items-center justify-center">
-              <span className="text-xl font-bold text-slate-400">2</span>
-            </div>
-          </div>
-        )}
-
-        {sorted.length >= 1 && (
-          <div className="flex flex-col items-center gap-2">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center shadow-lg shadow-amber-500/30 ring-2 ring-amber-400/30">
-              <Medal className="w-5 h-5 text-white" />
-            </div>
-            <p className="text-sm font-semibold text-white text-center leading-tight max-w-[80px] truncate">
-              {sorted[0].name.split(' ')[0]}
-            </p>
-            <p className="text-lg font-bold text-amber-400">{sorted[0].totalScore.toFixed(1)}</p>
-            <div className="w-20 h-[90px] bg-gradient-to-t from-amber-500/20 to-amber-500/5 rounded-t-xl border border-amber-500/20 flex items-center justify-center">
-              <span className="text-2xl font-bold text-amber-400">1</span>
-            </div>
-          </div>
-        )}
-
-        {sorted.length >= 3 && (
-          <div className="flex flex-col items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-600 to-orange-700 flex items-center justify-center shadow-lg">
-              <Medal className="w-4 h-4 text-amber-200" />
-            </div>
-            <p className="text-sm font-semibold text-white text-center leading-tight max-w-[80px] truncate">
-              {sorted[2].name.split(' ')[0]}
-            </p>
-            <p className="text-lg font-bold text-amber-600">{sorted[2].totalScore.toFixed(1)}</p>
-            <div className="w-14 h-[40px] bg-slate-800 rounded-t-xl flex items-center justify-center">
-              <span className="text-lg font-bold text-slate-500">3</span>
-            </div>
-          </div>
-        )}
+          );
+        })}
       </div>
 
       {entries.length > 3 && (
         <Link
           to="/leaderboard"
-          className="mt-4 flex items-center justify-center gap-1.5 text-xs text-slate-500 hover:text-amber-400 transition-colors"
+          className="mt-4 flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-brand transition-colors"
         >
           View full leaderboard
           <ChevronRight className="w-3.5 h-3.5" />
@@ -321,30 +279,33 @@ function ChallengeQuickList({ challenges }: { challenges: Challenge[] }) {
   const globallyLocked = competitionState?.locked ?? true;
 
   return (
-    <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 shadow-xl">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-card border border-border rounded-lg shadow-soft-sm p-5">
+      <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
-            <Swords className="w-5 h-5 text-amber-400" />
+          <div className="w-9 h-9 rounded-md border border-border bg-surface-3 flex items-center justify-center">
+            <Swords className="w-4 h-4 text-brand" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-white">Challenges</h2>
-            <p className="text-xs text-slate-500">{challenges.length} published</p>
+            <h2 className="text-base font-semibold text-foreground">Challenges</h2>
+            <p className="text-xs text-muted-foreground">{challenges.length} published</p>
           </div>
         </div>
         <Link
           to="/challenges"
-          className="text-xs text-amber-400 hover:text-amber-300 transition-colors flex items-center gap-1"
+          className="text-xs text-brand hover:text-brand/80 transition-colors flex items-center gap-1"
         >
           View all
           <ChevronRight className="w-3 h-3" />
         </Link>
       </div>
 
-      <div className="space-y-1.5">
+      <div className="space-y-1">
         {visible.map((challenge, i) => {
-          const isLocked = !unlockedRound || challenge.roundNumber !== unlockedRound || globallyLocked;
-          const cfg = difficultyConfig[challenge.difficulty];
+          const isLocked =
+            !unlockedRound ||
+            challenge.roundNumber !== unlockedRound ||
+            globallyLocked;
+          const variant = difficultyVariant[challenge.difficulty] ?? 'success';
           return (
             <motion.button
               key={challenge.id}
@@ -352,30 +313,28 @@ function ChallengeQuickList({ challenges }: { challenges: Challenge[] }) {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.04 }}
               onClick={() => {
-                if (!isLocked) {
-                  navigate(`/challenges/${challenge.id}`);
-                }
+                if (!isLocked) navigate(`/challenges/${challenge.id}`);
               }}
-              className={`w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-slate-800/50 transition-colors group ${
+              className={`w-full text-left flex items-center gap-3 px-3 py-2 rounded-md hover:bg-surface-3 transition-colors group ${
                 isLocked ? 'opacity-60 cursor-not-allowed' : ''
               }`}
             >
-              <div className={`w-2 h-2 rounded-full ${cfg.bg}`} />
-              <span className="flex-1 text-sm font-medium text-slate-300 group-hover:text-white transition-colors truncate">
+              <span className="w-1.5 h-1.5 rounded-full bg-brand/70 shrink-0" />
+              <span className="flex-1 text-sm font-medium text-foreground/90 group-hover:text-foreground transition-colors truncate">
                 {challenge.title}
               </span>
-              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-md ${cfg.bg} ${cfg.color}`}>
-                {cfg.label}
-              </span>
-              <span className="text-[10px] text-slate-600">R{challenge.roundNumber}</span>
+              <Badge variant={variant} size="sm">
+                {difficultyLabel[challenge.difficulty]}
+              </Badge>
+              <span className="text-[10px] text-muted-foreground num">R{challenge.roundNumber}</span>
               {isLocked && (
-                <span className="text-[10px] text-slate-500 bg-slate-800/50 px-1.5 py-0.5 rounded-md flex items-center gap-1">
+                <span className="text-[10px] text-muted-foreground bg-surface-3 border border-border px-1.5 py-0.5 rounded flex items-center gap-1">
                   <Lock className="w-3 h-3" />
                   {globallyLocked ? 'Closed' : 'Locked'}
                 </span>
               )}
               {!isLocked && (
-                <ChevronRight className="w-3.5 h-3.5 text-slate-600 group-hover:text-amber-400 transition-colors shrink-0" />
+                <ChevronRight className="w-3.5 h-3.5 text-muted-foreground group-hover:text-brand transition-colors shrink-0" />
               )}
             </motion.button>
           );
@@ -383,7 +342,7 @@ function ChallengeQuickList({ challenges }: { challenges: Challenge[] }) {
       </div>
 
       {challenges.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-8 text-slate-500">
+        <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
           <Swords className="w-8 h-8 mb-2 opacity-30" />
           <p className="text-sm">No challenges published yet</p>
         </div>
@@ -406,39 +365,39 @@ function UserPerformance({
   const myEntry = leaderboard.find((e) => e.userId === currentUserId);
 
   return (
-    <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 shadow-xl">
-      <div className="flex items-center gap-3 mb-5">
-        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-          <UserCheck className="w-5 h-5 text-emerald-400" />
+    <div className="bg-card border border-border rounded-lg shadow-soft-sm p-5">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-9 h-9 rounded-md border border-border bg-surface-3 flex items-center justify-center">
+          <UserCheck className="w-4 h-4 text-success" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-white">Your Performance</h2>
-          <p className="text-xs text-slate-500">Your standing in the competition</p>
+          <h2 className="text-base font-semibold text-foreground">Your Performance</h2>
+          <p className="text-xs text-muted-foreground">Your standing in the competition</p>
         </div>
       </div>
 
       {myEntry ? (
-        <div className="grid grid-cols-3 gap-3">
-          <div className="px-3 py-3 bg-amber-500/10 rounded-xl border border-amber-500/20 text-center">
-            <p className="text-2xl font-bold text-amber-400">#{myEntry.rank}</p>
-            <p className="text-[10px] text-amber-500/70 mt-0.5">Rank</p>
+        <div className="grid grid-cols-3 gap-2">
+          <div className="px-3 py-3 bg-brand-soft rounded-md border border-brand/20 text-center">
+            <p className="text-xl font-bold text-brand num">#{myEntry.rank}</p>
+            <p className="text-[10px] text-brand/70 mt-0.5">Rank</p>
           </div>
-          <div className="px-3 py-3 bg-slate-950/50 rounded-xl border border-slate-800/50 text-center">
-            <p className="text-2xl font-bold text-white">{myEntry.totalScore.toFixed(1)}</p>
-            <p className="text-[10px] text-slate-500 mt-0.5">Total Score</p>
+          <div className="px-3 py-3 bg-surface-1 rounded-md border border-border text-center">
+            <p className="text-xl font-bold text-foreground num">{myEntry.totalScore.toFixed(1)}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Total Score</p>
           </div>
-          <div className="px-3 py-3 bg-slate-950/50 rounded-xl border border-slate-800/50 text-center">
-            <p className="text-2xl font-bold text-white">{myEntry.challengesCompleted}</p>
-            <p className="text-[10px] text-slate-500 mt-0.5">Completed</p>
+          <div className="px-3 py-3 bg-surface-1 rounded-md border border-border text-center">
+            <p className="text-xl font-bold text-foreground num">{myEntry.challengesCompleted}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Completed</p>
           </div>
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center py-6 text-slate-500">
-          <Sparkles className="w-8 h-8 mb-2 opacity-30" />
+        <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
+          <Sparkles className="w-7 h-7 mb-2 opacity-30" />
           <p className="text-sm">No submissions yet</p>
           <Link
             to="/challenges"
-            className="mt-2 text-xs text-amber-400 hover:text-amber-300 transition-colors"
+            className="mt-2 text-xs text-brand hover:text-brand/80 transition-colors"
           >
             Solve your first challenge →
           </Link>
@@ -454,25 +413,16 @@ function UserPerformance({
 
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.06 },
-  },
+  visible: { opacity: 1, transition: { staggerChildren: 0.06 } },
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
+  hidden: { opacity: 0, y: 16 },
   visible: { opacity: 1, y: 0 },
 };
 
 export function Dashboard() {
   const identity = useIdentity();
-  const navigate = useNavigate();
-
-  // Track the previous set of challenge IDs to detect "new" challenges appearing
-  const prevChallengeIdsRef = useRef<string[]>([]);
-  const hasNavigatedRef = useRef(false);
-  const prevStatusRef = useRef<string | null>(null);
 
   // Fetch competition state — poll every 3s for near-instant challenge-start detection
   const { data: state, isLoading: stateLoading } = useQuery<CompetitionState>({
@@ -485,7 +435,6 @@ export function Dashboard() {
     refetchInterval: 3_000,
   });
 
-  // Fetch participants
   const { data: participants = [] } = useQuery<Participant[]>({
     queryKey: ['participants'],
     queryFn: async () => {
@@ -496,7 +445,6 @@ export function Dashboard() {
     staleTime: 30_000,
   });
 
-  // Fetch challenges — poll every 5s so new published challenges show up quickly
   const { data: challenges = [] } = useQuery<Challenge[]>({
     queryKey: ['challenges'],
     queryFn: async () => {
@@ -508,7 +456,6 @@ export function Dashboard() {
     staleTime: 2_000,
   });
 
-  // Fetch overall leaderboard
   const { data: overallLb } = useQuery<OverallResponse>({
     queryKey: ['leaderboard-overall'],
     queryFn: async () => {
@@ -520,45 +467,23 @@ export function Dashboard() {
     staleTime: 5_000,
   });
 
-  // Auto-navigation: When competition transitions to RUNNING and a new published
-  // challenge appears, take the participant directly to the editor for that challenge.
-  // If the participant navigates back, the flag is reset so they get re-directed
-  // again as long as challenges still exist — this fulfills "without requiring any click."
-  useEffect(() => {
-    if (!state || state.status !== 'RUNNING') {
-      // Competition isn't running — reset everything
-      hasNavigatedRef.current = false;
-      prevStatusRef.current = state?.status ?? null;
-      prevChallengeIdsRef.current = challenges.map((c) => c.id);
-      return;
-    }
-
-    const currentIds = challenges.map((c) => c.id);
-
-    // If the user navigated back to the dashboard, re-direct them again
-    // (the flag was reset by the effect cleanup or the route change logic).
-    if (!hasNavigatedRef.current && currentIds.length > 0) {
-      const sorted = [...challenges].sort((a, b) => a.roundNumber - b.roundNumber);
-      const target = sorted[0];
-      if (target) {
-        hasNavigatedRef.current = true;
-        navigate(`/challenges/${target.id}`);
-      }
-    }
-
-    prevStatusRef.current = state.status;
-    prevChallengeIdsRef.current = currentIds;
-  }, [state?.status, challenges, navigate]);
-
   const participantCount = participants.filter((p) => p.role === 'PARTICIPANT').length;
   const topEntries = overallLb?.entries ?? [];
 
-  // --- Loading state ---
+  const statusBlurb =
+    state?.status === 'RUNNING'
+      ? 'The competition is live — jump in and start coding!'
+      : state?.status === 'PAUSED'
+        ? 'The competition is paused. Check back soon.'
+        : state?.status === 'ENDED'
+          ? 'The competition has ended. Check the leaderboard for final results.'
+          : 'The competition hasn’t started yet. Stay tuned!';
+
   if (stateLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 text-slate-400">
-        <Loader2 className="w-8 h-8 animate-spin mb-4 text-amber-500" />
-        <p>Loading dashboard...</p>
+      <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
+        <Loader2 className="w-8 h-8 animate-spin mb-4 text-brand" />
+        <p>Loading dashboard…</p>
       </div>
     );
   }
@@ -570,86 +495,36 @@ export function Dashboard() {
       animate="visible"
       className="max-w-5xl mx-auto"
     >
-      {/* Header */}
-      <motion.div variants={itemVariants} className="flex items-center gap-4 mb-8">
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-          <Sparkles className="w-6 h-6 text-white" />
-        </div>
-        <div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">
-            Welcome back{identity ? `, ${identity.name.split(' ')[0]}` : ''}
-          </h1>
-          <p className="text-slate-400 mt-1">
-            {state?.status === 'RUNNING'
-              ? 'The competition is live — jump in and start coding!'
-              : state?.status === 'PAUSED'
-                ? 'The competition is paused. Check back soon.'
-                : state?.status === 'ENDED'
-                  ? 'The competition has ended. Check the leaderboard for final results.'
-                  : 'The competition hasn\'t started yet. Stay tuned!'}
-          </p>
-        </div>
+      <motion.div variants={itemVariants} className="mb-7">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+          Welcome back{identity ? `, ${identity.name.split(' ')[0]}` : ''}
+        </h1>
+        <p className="text-muted-foreground mt-1 text-sm">{statusBlurb}</p>
       </motion.div>
 
-      {/* Competition Status */}
       {state && (
-        <motion.div variants={itemVariants} className="mb-6">
+        <motion.div variants={itemVariants} className="mb-5">
           <CompetitionStatusCard state={state} />
         </motion.div>
       )}
 
-      {/* Stats Grid */}
-      <motion.div variants={itemVariants} className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-        <StatCard
-          icon={<Users className="w-5 h-5" />}
-          label="Participants"
-          value={participantCount}
-          sub="Registered for the event"
-          accent="emerald"
-        />
-        <StatCard
-          icon={<Swords className="w-5 h-5" />}
-          label="Challenges"
-          value={challenges.length}
-          sub={challenges.length > 0 ? `Across ${new Set(challenges.map(c => c.roundNumber)).size} rounds` : 'Published'}
-          accent="amber"
-        />
-        <StatCard
-          icon={<Trophy className="w-5 h-5" />}
-          label="Top Score"
-          value={topEntries.length > 0 ? topEntries[0].totalScore.toFixed(1) : '—'}
-          sub={topEntries.length > 0 ? topEntries[0].name : 'No data yet'}
-          accent="amber"
-        />
-        <StatCard
-          icon={<BarChart3 className="w-5 h-5" />}
-          label="Participants With Scores"
-          value={topEntries.length}
-          sub="In the overall leaderboard"
-          accent="blue"
-        />
+      <motion.div variants={itemVariants} className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+        <StatTile icon={Users} label="Participants" value={participantCount} sub="Registered for the event" accent="success" />
+        <StatTile icon={Swords} label="Challenges" value={challenges.length} sub={challenges.length > 0 ? `Across ${new Set(challenges.map((c) => c.roundNumber)).size} rounds` : 'Published'} accent="brand" />
+        <StatTile icon={Trophy} label="Top Score" value={topEntries.length > 0 ? topEntries[0].totalScore.toFixed(1) : '—'} sub={topEntries.length > 0 ? topEntries[0].name : 'No data yet'} accent="warning" />
+        <StatTile icon={BarChart3} label="On Board" value={topEntries.length} sub="In the overall leaderboard" accent="info" />
       </motion.div>
 
-      {/* Main grid: Leaderboard Podium + Challenges + Your Performance */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left: Podium */}
+      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2">
           <Podium entries={topEntries} />
         </div>
-
-        {/* Right: User Performance */}
         <div>
-          {identity && (
-            <UserPerformance
-              currentUserId={identity.id}
-              leaderboard={topEntries}
-            />
-          )}
+          {identity && <UserPerformance currentUserId={identity.id} leaderboard={topEntries} />}
         </div>
       </motion.div>
 
-      {/* Challenges List */}
-      <motion.div variants={itemVariants} className="mt-6">
+      <motion.div variants={itemVariants} className="mt-5">
         <ChallengeQuickList challenges={challenges} />
       </motion.div>
     </motion.div>

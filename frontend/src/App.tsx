@@ -1,6 +1,7 @@
-import { Link, Route, Routes, useLocation } from 'react-router-dom';
+import { Link, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useIdentity, clearIdentity } from './lib/identity.js';
+import { cn } from './lib/utils.js';
 import { IdentitySelection } from './pages/IdentitySelection.js';
 import { ChallengeList } from './pages/ChallengeList.js';
 import { Battle } from './pages/Battle.js';
@@ -27,10 +28,12 @@ function HealthBadge() {
     queryFn: fetchHealth,
   });
 
-  if (isLoading) return <span className="text-slate-400">checking backend…</span>;
-  if (error) return <span className="text-red-400">backend unreachable</span>;
+  if (isLoading)
+    return <span className="text-xs text-muted-foreground">checking backend…</span>;
+  if (error)
+    return <span className="text-xs text-destructive">backend unreachable</span>;
   return (
-    <span className="text-emerald-400">
+    <span className="text-xs text-success">
       {data?.service} · up {Math.round(data?.uptime ?? 0)}s
     </span>
   );
@@ -38,48 +41,54 @@ function HealthBadge() {
 
 /** Dedicated layout for non-admin screens */
 function MainLayout({ identity }: { identity: NonNullable<ReturnType<typeof useIdentity>> }) {
+  const navLinkClass = ({ isActive }: { isActive: boolean }) =>
+    cn(
+      'px-3.5 py-2 text-sm font-medium rounded-lg transition-colors',
+      isActive
+        ? 'bg-brand-soft text-brand'
+        : 'text-muted-foreground hover:text-foreground hover:bg-surface-3',
+    );
+
   return (
-    <div className="min-h-full bg-slate-950 text-slate-200">
-      <header className="border-b border-slate-800 px-6 py-4 flex items-center justify-between bg-slate-900/50 backdrop-blur-sm sticky top-0 z-40">
-        <Link to="/" className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-          <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-sm shadow-lg shadow-blue-500/20">
+    <div className="min-h-full bg-surface-1 text-foreground">
+      <header className="border-b border-border px-6 py-3.5 flex items-center justify-between bg-surface-1/80 backdrop-blur-md sticky top-0 z-40">
+        <Link to="/" className="flex items-center gap-2.5 group">
+          <span className="w-8 h-8 rounded-lg bg-brand text-brand-foreground flex items-center justify-center text-xs font-bold tracking-tight shadow-soft-md ring-1 ring-brand/30 transition-transform group-hover:scale-[1.03]">
             CSS
           </span>
-          WARS
+          <span className="text-lg font-bold tracking-tight text-foreground">
+            WARS
+          </span>
         </Link>
+
         <nav className="flex items-center gap-1">
-          <Link
-            to="/challenges"
-            className="px-4 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
-          >
+          <NavLink to="/challenges" className={navLinkClass}>
             Challenges
-          </Link>
-          <Link
-            to="/leaderboard"
-            className="px-4 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
-          >
+          </NavLink>
+          <NavLink to="/leaderboard" className={navLinkClass}>
             Leaderboard
-          </Link>
+          </NavLink>
           {identity.role === 'ADMIN' && (
-            <Link
-              to="/admin"
-              className="px-4 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
-            >
+            <NavLink to="/admin" className={navLinkClass}>
               Admin
-            </Link>
+            </NavLink>
           )}
         </nav>
-        <div className="flex items-center gap-6">
+
+        <div className="flex items-center gap-4">
           <HealthBadge />
-          <div className="flex items-center gap-3 text-sm">
-            <span className="text-slate-400">
-              Playing as <strong className="text-white">{identity.name}</strong>
+          <div className="flex items-center gap-2.5">
+            <span className="text-xs text-muted-foreground hidden sm:block">
+              Playing as
+            </span>
+            <span className="text-sm font-medium text-foreground bg-surface-3 border border-border rounded-lg px-3 py-1.5">
+              {identity.name}
             </span>
             <button
               onClick={clearIdentity}
-              className="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md transition-colors"
+              className="px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground border border-border hover:bg-surface-3 rounded-lg transition-colors"
             >
-              Switch User
+              Switch
             </button>
           </div>
         </div>
@@ -93,7 +102,7 @@ function MainLayout({ identity }: { identity: NonNullable<ReturnType<typeof useI
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route
             path="*"
-            element={<p className="text-slate-400">Not implemented yet.</p>}
+            element={<p className="text-muted-foreground">Not implemented yet.</p>}
           />
         </Routes>
       </main>

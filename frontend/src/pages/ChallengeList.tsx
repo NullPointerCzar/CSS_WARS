@@ -5,12 +5,12 @@ import {
   Loader2,
   AlertCircle,
   ChevronRight,
-  Circle,
   CheckCircle2,
   Lock,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useIdentity } from '../lib/identity.js';
+import { Badge } from '@/components/ui/badge';
 
 interface Challenge {
   id: string;
@@ -21,21 +21,17 @@ interface Challenge {
   roundNumber: number;
 }
 
-const difficultyConfig = {
-  EASY: { color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', label: 'Easy' },
-  MEDIUM: { color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20', label: 'Medium' },
-  HARD: { color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20', label: 'Hard' },
+const difficultyVariant: Record<string, 'success' | 'warning' | 'danger'> = {
+  EASY: 'success',
+  MEDIUM: 'warning',
+  HARD: 'danger',
 };
 
-function DifficultyBadge({ difficulty }: { difficulty: string }) {
-  const cfg = difficultyConfig[difficulty as keyof typeof difficultyConfig] ?? difficultyConfig.EASY;
-  return (
-    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium ${cfg.bg} ${cfg.color} ${cfg.border}`}>
-      <Circle className="w-1.5 h-1.5 fill-current" />
-      {cfg.label}
-    </span>
-  );
-}
+const difficultyLabel: Record<string, string> = {
+  EASY: 'Easy',
+  MEDIUM: 'Medium',
+  HARD: 'Hard',
+};
 
 export function ChallengeList() {
   const navigate = useNavigate();
@@ -63,18 +59,19 @@ export function ChallengeList() {
   const unlockedRound = competitionState?.unlockedRound ?? null;
   const globallyLocked = competitionState?.locked ?? true;
 
-  // Fetch submission status for each challenge for the current user
   const challengeIds = challenges.map((c) => c.id);
   const { data: submissionsMap = {} } = useQuery<Record<string, { hasSubmitted: boolean; bestScore: number | null }>>({
     queryKey: ['my-submissions-status', identity?.id, challengeIds],
     queryFn: async () => {
       if (!identity?.id || challengeIds.length === 0) return {};
       const results: Record<string, { hasSubmitted: boolean; bestScore: number | null }> = {};
-      // Fetch for each challenge — simple approach without a batch endpoint
       const fetches = challengeIds.map(async (cid) => {
         try {
           const res = await fetch(`/api/submissions/mine?userId=${identity.id}&challengeId=${cid}`);
-          if (!res.ok) { results[cid] = { hasSubmitted: false, bestScore: null }; return; }
+          if (!res.ok) {
+            results[cid] = { hasSubmitted: false, bestScore: null };
+            return;
+          }
           const subs = await res.json();
           const best = Array.isArray(subs) ? subs.find((s: any) => s.isBest) : null;
           results[cid] = {
@@ -94,82 +91,85 @@ export function ChallengeList() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="flex items-center gap-4 mb-8">
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
-          <Swords className="w-6 h-6 text-white" />
+      <div className="flex items-center gap-3 mb-7">
+        <div className="w-11 h-11 rounded-md border border-border bg-surface-3 flex items-center justify-center">
+          <Swords className="w-5 h-5 text-brand" />
         </div>
         <div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Challenges</h1>
-          <p className="text-slate-400 mt-1">Pick a challenge and write your CSS solution</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Challenges</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Pick a challenge and write your CSS solution</p>
         </div>
       </div>
 
       {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-24 text-slate-400">
-          <Loader2 className="w-8 h-8 animate-spin mb-4 text-amber-500" />
-          <p>Loading challenges...</p>
+        <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
+          <Loader2 className="w-8 h-8 animate-spin mb-4 text-brand" />
+          <p>Loading challenges…</p>
         </div>
       ) : isError ? (
-        <div className="flex flex-col items-center justify-center py-24">
-          <AlertCircle className="w-12 h-12 text-red-400 mb-4" />
-          <p className="text-red-400">Failed to load challenges. Please try again.</p>
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <AlertCircle className="w-10 h-10 text-destructive mb-4" />
+          <p className="text-destructive">Failed to load challenges. Please try again.</p>
         </div>
       ) : challenges.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 text-slate-500">
-          <Swords className="w-12 h-12 mb-4 opacity-30" />
-          <p className="text-lg font-medium">No challenges available yet</p>
+        <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
+          <Swords className="w-10 h-10 mb-4 opacity-30" />
+          <p className="text-base font-medium text-foreground">No challenges available yet</p>
           <p className="text-sm mt-1">Check back later — challenges will appear here once published.</p>
         </div>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-3">
           {challenges.map((challenge, i) => {
-            const isLocked = !unlockedRound || challenge.roundNumber !== unlockedRound || globallyLocked;
+            const isLocked =
+              !unlockedRound ||
+              challenge.roundNumber !== unlockedRound ||
+              globallyLocked;
             const status = submissionsMap[challenge.id];
             return (
               <motion.button
                 key={challenge.id}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
                 onClick={() => {
-                  if (!isLocked) {
-                    navigate(`/challenges/${challenge.id}`);
-                  }
+                  if (!isLocked) navigate(`/challenges/${challenge.id}`);
                 }}
-                className={`w-full text-left group bg-slate-900/50 hover:bg-slate-900/80 border border-slate-800 hover:border-slate-700 rounded-2xl p-6 transition-all duration-200 shadow-xl ${
-                  isLocked ? 'opacity-75' : ''
+                className={`w-full text-left group bg-card hover:bg-surface-2 border border-border hover:border-brand/40 rounded-lg p-5 transition-all duration-200 shadow-soft-sm ${
+                  isLocked ? 'opacity-75 cursor-not-allowed' : ''
                 }`}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className="text-xs font-medium text-slate-500 bg-slate-800/50 px-2.5 py-1 rounded-lg">
+                    <div className="flex items-center gap-2.5 mb-2 flex-wrap">
+                      <span className="text-[11px] font-medium text-muted-foreground bg-surface-3 border border-border px-2 py-0.5 rounded">
                         Round {challenge.roundNumber}
                       </span>
-                      <DifficultyBadge difficulty={challenge.difficulty} />
+                      <Badge variant={difficultyVariant[challenge.difficulty] ?? 'success'} size="sm">
+                        {difficultyLabel[challenge.difficulty]}
+                      </Badge>
                       {isLocked && (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-400 bg-slate-500/10 px-2.5 py-1 rounded-lg">
-                          <Lock className="w-3.5 h-3.5" />
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground bg-surface-3 border border-border px-2 py-0.5 rounded">
+                          <Lock className="w-3 h-3" />
                           {globallyLocked ? 'Submissions Closed' : 'Round Locked'}
                         </span>
                       )}
                       {!isLocked && status?.hasSubmitted && (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-success bg-success-soft border border-success/20 px-2 py-0.5 rounded">
+                          <CheckCircle2 className="w-3 h-3" />
                           {status.bestScore !== null ? `${status.bestScore}%` : 'Submitted'}
                         </span>
                       )}
                     </div>
-                    <h2 className="text-xl font-semibold text-white group-hover:text-amber-400 transition-colors mb-1">
+                    <h2 className="text-base font-semibold text-foreground group-hover:text-brand transition-colors mb-1">
                       {challenge.title}
                     </h2>
                     {challenge.description && (
-                      <p className="text-slate-400 text-sm line-clamp-2">{challenge.description}</p>
+                      <p className="text-muted-foreground text-sm line-clamp-2">{challenge.description}</p>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <ChevronRight className={`w-5 h-5 text-slate-600 group-hover:text-amber-400 transition-colors ${isLocked ? 'opacity-50' : ''}`} />
-                  </div>
+                  {!isLocked && (
+                    <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-brand transition-colors shrink-0 mt-1" />
+                  )}
                 </div>
               </motion.button>
             );
